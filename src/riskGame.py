@@ -37,7 +37,7 @@ class Territory:
 
     def add_neighbor(self, neighbor: Self):
         """
-        Adds a neighbor to the territory
+        Adds a neighbor to the Territory
 
         :params:\n
         neighbor    --  a Territory
@@ -48,7 +48,7 @@ class Territory:
 @dataclass
 class Continent:
     """
-    A group of territories that, when controlled, awards you a number of armies 
+    A group of Territories that, when controlled, awards you a number of armies 
     at the beginning of your turn.
     """
     name: str
@@ -64,10 +64,10 @@ class Card:
     player's turn. If you have five or six cards in your hand at the beginning
     of your turn, you MUST trade in at least one set. The number of armies
     awarded for trading in a set of cards increases the more sets are traded
-    in. If any card shows a picture of a territory you occupy, you are awarded
-    two extra armies which you must place onto that territory. You cannot
+    in. If any card contains a Territory you occupy, you are awarded
+    two extra armies which you must place onto that Territory. You cannot
     receive more than two extra armies in this way.
     """
-    territory: str
+    territory: Territory
     design: int
     wildcard: bool = False
