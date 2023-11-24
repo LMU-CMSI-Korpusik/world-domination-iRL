@@ -5,6 +5,7 @@ Author: Kieran Ahn
 Date: 11/23/2023
 """
 from riskGame import *
+from random import shuffle
 
 """
 PSEUDOCODE FOR RUNNING THE GAME:
@@ -108,6 +109,7 @@ class Board:
     armies: dict[Territory, int]
     continents: set[Continent]
     players: list[Player]
+    deck: list[Card]
 
     def is_win(self, player: Player):
         """
@@ -132,3 +134,25 @@ class Board:
         validated_armies = validate(
             validated_armies, validated_armies > 0, 'Territories must hold at least 1 army', ValueError)
         self.armies[validate_is_type(territory, Territory)] = validated_armies
+
+    def draw(self) -> Card:
+        """
+        Draws a card from the deck
+
+        :returns:\n
+        card    -- the drawn card
+        """
+        return self.deck.pop()
+
+    def return_and_shuffle(self, *cards: Card):
+        """
+        Shuffles a number of cards back into the deck
+
+        :params:
+        cards   -- the cards to return to the deck
+        """
+
+        for card in cards:
+            self.deck.append(card)
+
+        shuffle(self.deck)
