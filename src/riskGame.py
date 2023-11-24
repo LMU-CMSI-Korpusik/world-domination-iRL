@@ -8,6 +8,16 @@ Date: 11/23/2023
 from validators import *
 from dataclasses import dataclass
 from typing import Self
+from enum import Enum
+
+
+class Design(Enum):
+    """
+    Designs that can appear on cards.
+    """
+    INFANTRY = 0
+    CAVALRY = 1
+    ARTILLERY = 2
 
 
 @dataclass
@@ -66,8 +76,9 @@ class Card:
     awarded for trading in a set of cards increases the more sets are traded
     in. If any card contains a Territory you occupy, you are awarded
     two extra armies which you must place onto that Territory. You cannot
-    receive more than two extra armies in this way.
+    receive more than two extra armies in this way. If you defeat a player,
+    you get all of their cards.
     """
     territory: Territory
-    design: int
+    design: Design
     wildcard: bool = False
