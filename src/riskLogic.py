@@ -152,7 +152,6 @@ class Board:
         :params:\n
         cards   -- the cards to return to the deck
         """
-
         for card in cards:
             self.deck.append(card)
 
@@ -164,6 +163,7 @@ class Rules:
     The rules for running a game of Risk
     """
 
+    @staticmethod
     def get_matching_cards(cards: list[Card]) -> list[tuple[Card, Card, Card]]:
         """
         Finds all the valid matches in a hand of cards
@@ -190,6 +190,7 @@ class Rules:
 
         return matches
 
+    @staticmethod
     def get_initial_armies(n_players: int) -> int:
         """
         Gets the initial number of armies a player starts the game with.
@@ -201,8 +202,10 @@ class Rules:
         armies      -- the initial armies for each player
         """
         if n_players < 1:
-            raise ValueError(f'Please tell me how playing Risk with {
-                             n_players} players is mathematically possible.')
+            raise ValueError(
+                f'Please tell me how playing Risk with {
+                    n_players} players is mathematically possible.'
+            )
         if n_players == 1:
             raise ValueError("You cannot play Risk by yourself.")
         if n_players == 2:
