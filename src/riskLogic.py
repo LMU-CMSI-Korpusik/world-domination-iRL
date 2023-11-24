@@ -52,7 +52,7 @@ class Player:
         captured during play or at the beginning of the game.
 
         :params:\n
-        territory   -- A Territory
+        territory   --  a Territory
         """
         self.territories.add(validate_is_type(territory, Territory))
 
@@ -62,7 +62,7 @@ class Player:
         captured.
 
         :params:\n
-        territory   -- a Territory
+        territory   --  a Territory
         """
         validated_territory = validate_is_type(territory, Territory)
         if validated_territory in self.territories:
@@ -78,7 +78,7 @@ class Player:
         another player.
 
         :params:\n
-        card    -- a Card
+        card    --  a Card
         """
         self.hand.append(validate_is_type(card, Card))
 
@@ -88,7 +88,7 @@ class Player:
         armies.
 
         :params:\n
-        card    -- a Card
+        card    --  a Card
         """
         validated_card = validate_is_type(card, Card)
         if validated_card in self.hand:
@@ -117,7 +117,7 @@ class Board:
         Method to determine whether a player has won the game.
 
         :params:\n
-        player  -- a Player
+        player  --  a Player
         """
         if len(self.territories.difference(validate_is_type(player, Player).territories)) == 0:
             return True
@@ -128,8 +128,8 @@ class Board:
         Updates the amount of armies on a territory
 
         :params:\n
-        territory   -- a Territory\n
-        armies      -- the new amount of armies on territory
+        territory   --  a Territory\n
+        armies      --  the new amount of armies on territory
         """
         validated_armies = validate_is_type(armies, int)
         validated_armies = validate(
@@ -141,7 +141,7 @@ class Board:
         Draws a card from the deck
 
         :returns:\n
-        card    -- the drawn card
+        card    --  the drawn card
         """
         return self.deck.pop()
 
@@ -150,7 +150,7 @@ class Board:
         Shuffles a number of cards back into the deck
 
         :params:\n
-        cards   -- the cards to return to the deck
+        cards   --  the cards to return to the deck
         """
         for card in cards:
             self.deck.append(card)
@@ -169,10 +169,10 @@ class Rules:
         Finds all the valid matches in a hand of cards
 
         :params:\n
-        cards   -- A list of Cards
+        cards   --  A list of Cards
 
         :returns:\n
-        matches -- A list of tuples containing matched Cards
+        matches --  A list of tuples containing matched Cards
         """
         matches = list()
 
@@ -196,10 +196,10 @@ class Rules:
         Gets the initial number of armies a player starts the game with.
 
         :params:\n
-        n_players   -- the number of players in the game
+        n_players   --  the number of players in the game
 
         :returns:\n
-        armies      -- the initial armies for each player
+        armies      --  the initial armies for each player
         """
         if n_players < 1:
             raise ValueError(
@@ -215,3 +215,32 @@ class Rules:
             raise ValueError("Risk does not support more than six players.")
         else:
             return 35 - (5 * (n_players - 3))
+
+    @staticmethod
+    def resolve_attack(attacker_rolls: list[int], defender_rolls: list[int]) -> tuple[int, int]:
+        """
+        Determines whether the attacker or defender wins when attacking a
+        Territory
+
+        :params:\n
+        attacker_rolls  --  The dice rolls the attacker made\n
+        defender_rolls  --  The dice rolls the defender made
+
+        :returns:
+        attacker_losses --  the number of armies the attacker lost\n
+        defender_losses --  the number of armies the defender lost
+        """
+        attacker_rolls.sort()
+        defender_rolls.sort()
+        attacker_losses = 0
+        defender_losses = 0
+
+        while len(attacker_rolls) > 0 and len(defender_rolls) > 0:
+            highest_attacker_roll = attacker_rolls.pop()
+            highest_defender_roll = defender_rolls.pop()
+            if highest_attacker_roll > highest_defender_roll:
+                defender_losses += 1
+            else:
+                attacker_losses += 1
+
+        return attacker_losses, defender_losses
