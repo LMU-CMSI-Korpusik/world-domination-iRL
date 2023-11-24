@@ -28,7 +28,7 @@ def validate(toValidate, condition: bool, message: str, exceptionType=Exception)
     return toValidate
 
 
-def validate_is_type(object, type: type):
+def validate_is_type[T](object, type: T) -> T:
     """
     Validates whether an object is a given type or not
 
