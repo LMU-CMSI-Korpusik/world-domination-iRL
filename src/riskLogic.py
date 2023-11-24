@@ -40,7 +40,7 @@ class Player:
     """
     name: str
     territories: set[Territory] = set()
-    hand: set[Card] = set()
+    hand: list[Card] = list()
 
     def choose_action():
         raise NotImplementedError(
@@ -80,7 +80,7 @@ class Player:
         :params:\n
         card    -- a Card
         """
-        self.hand.add(validate_is_type(card, Card))
+        self.hand.append(validate_is_type(card, Card))
 
     def remove_card(self, card: Card):
         """
@@ -110,6 +110,7 @@ class Board:
     continents: set[Continent]
     players: list[Player]
     deck: list[Card]
+    matches_traded: int = 0
 
     def is_win(self, player: Player):
         """
@@ -148,7 +149,7 @@ class Board:
         """
         Shuffles a number of cards back into the deck
 
-        :params:
+        :params:\n
         cards   -- the cards to return to the deck
         """
 
@@ -156,3 +157,35 @@ class Board:
             self.deck.append(card)
 
         shuffle(self.deck)
+
+
+class Rules:
+    """
+    The rules for running a game of Risk
+    """
+
+    def get_matching_cards(self, cards: list[Card]) -> list[tuple[Card, Card, Card]]:
+        """
+        Finds all the valid matches in a hand of cards
+
+        :params:\n
+        cards   -- A list of Cards
+
+        :returns:\n
+        matches -- A list of tuples containing matched Cards
+        """
+        matches = list()
+
+        for i in range(len(cards)):
+            for j in range(i, len(cards)):
+                if i == j:
+                    continue
+                # Yes, having a triple for loop hurts my eyes, too.
+                for k in range(j, len(cards)):
+                    if j == k:
+                        continue
+                    if (cards[i].design == cards[j].design and cards[j].design == cards[k].design) or (cards[i].design != cards[j].design and cards[j].design != cards[k].design and cards[k].design != cards[i].design):
+                        # Don't talk to me about this conditional. -Kieran
+                        matches.append((cards[i], cards[j], cards[k]))
+
+        return matches
