@@ -184,7 +184,7 @@ class Rules:
                 for k in range(j, len(cards)):
                     if j == k:
                         continue
-                    if (cards[i].design == cards[j].design and cards[j].design == cards[k].design) or (cards[i].design != cards[j].design and cards[j].design != cards[k].design and cards[k].design != cards[i].design):
+                    if (cards[i].design == cards[j].design and cards[j].design == cards[k].design) or (cards[i].design != cards[j].design and cards[j].design != cards[k].design and cards[k].design != cards[i].design) or any([cards[i].wildcard, cards[j].wildcard, cards[k].wildcard]):
                         # Don't talk to me about this conditional. -Kieran
                         matches.append((cards[i], cards[j], cards[k]))
 
