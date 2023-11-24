@@ -164,7 +164,7 @@ class Rules:
     The rules for running a game of Risk
     """
 
-    def get_matching_cards(self, cards: list[Card]) -> list[tuple[Card, Card, Card]]:
+    def get_matching_cards(cards: list[Card]) -> list[tuple[Card, Card, Card]]:
         """
         Finds all the valid matches in a hand of cards
 
@@ -189,3 +189,26 @@ class Rules:
                         matches.append((cards[i], cards[j], cards[k]))
 
         return matches
+
+    def get_initial_armies(n_players: int) -> int:
+        """
+        Gets the initial number of armies a player starts the game with.
+
+        :params:\n
+        n_players   -- the number of players in the game
+
+        :returns:\n
+        armies      -- the initial armies for each player
+        """
+        if n_players < 1:
+            raise ValueError(f'Please tell me how playing Risk with {
+                             n_players} players is mathematically possible.')
+        if n_players == 1:
+            raise ValueError("You cannot play Risk by yourself.")
+        if n_players == 2:
+            raise NotImplementedError(
+                "2 player Risk has not been implemented yet.")
+        if n_players > 6:
+            raise ValueError("Risk does not support more than six players.")
+        else:
+            return 35 - (5 * (n_players - 3))
