@@ -247,9 +247,31 @@ class Rules:
 
     @staticmethod
     def get_armies_from_card_match(matches_made: int) -> int:
+        """
+        The amount of armies turning in a matched set of cards will get you
+
+        :params:\n
+        matches_made    --  the number of matched trios turned in so far
+
+        :returns:\n
+        armies          --  the amount of armies awarded
+        """
         if matches_made < 5:
             return 4 + 2 * matches_made
         elif matches_made == 5:
             return 15
         else:
             return (matches_made - 2) * 5
+
+    @staticmethod
+    def get_armies_from_territories_occupied(occupied_territories: int) -> int:
+        """
+        The amount of armies awarded from occupying territories
+
+        :params:
+        occupied_territories    --  the number of territories a player occupies
+
+        :returns:\n
+        armies                  --  the amount of armies awarded
+        """
+        return max(3, occupied_territories // 3)
