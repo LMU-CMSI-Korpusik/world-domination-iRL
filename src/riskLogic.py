@@ -244,3 +244,12 @@ class Rules:
                 attacker_losses += 1
 
         return attacker_losses, defender_losses
+
+    @staticmethod
+    def get_armies_from_card_match(matches_made: int) -> int:
+        if matches_made < 5:
+            return 4 + 2 * matches_made
+        elif matches_made == 5:
+            return 15
+        else:
+            return (matches_made - 2) * 5
