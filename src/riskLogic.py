@@ -164,10 +164,10 @@ class Board:
         """
         Creates a deck of cards from a list of territories, plus two wildcards.
 
-        :params:
+        :params:\n
         territories -- a list of Territories
 
-        :returns:
+        :returns:\n
         deck        -- a list of Cards
         """
         deck = list()
@@ -248,7 +248,7 @@ class Rules:
         attacker_rolls  --  The dice rolls the attacker made\n
         defender_rolls  --  The dice rolls the defender made
 
-        :returns:
+        :returns:\n
         attacker_losses --  the number of armies the attacker lost\n
         defender_losses --  the number of armies the defender lost
         """
@@ -290,7 +290,7 @@ class Rules:
         """
         The amount of armies awarded from occupying territories
 
-        :params:
+        :params:\n
         occupied_territories    --  the number of territories a player occupies
 
         :returns:\n
@@ -306,6 +306,13 @@ class ClassicBoard(Board):
     """
 
     def __init__(self, players: list[Player]):
+        """
+        The classic board configuration is set, and the only thing that needs
+        to be supplied is the players.
+
+        :params:\n
+        players     --  a list of Players
+        """
         self.territories = classic_territories
         self.continents = classic_continents
         self.armies = dict()
