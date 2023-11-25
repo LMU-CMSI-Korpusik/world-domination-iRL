@@ -5,6 +5,7 @@ Author: Kieran Ahn
 Date: 11/23/2023
 """
 from riskGame import *
+from dataclasses import field
 from random import shuffle, choice, seed
 from classicGame import classic_continents, classic_territories
 
@@ -41,8 +42,8 @@ class Player:
     An agent who will play Risk. Interface to be implemented.
     """
     name: str
-    territories: set[Territory] = set()
-    hand: list[Card] = list()
+    territories: set[Territory] = field(default_factory=set)
+    hand: list[Card] = field(default_factory=list)
 
     def choose_action():
         raise NotImplementedError(
