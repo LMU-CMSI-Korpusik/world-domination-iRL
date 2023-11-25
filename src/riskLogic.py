@@ -160,12 +160,24 @@ class Board:
         shuffle(self.deck)
 
     @staticmethod
-    def make_deck(territories):
+    def make_deck(territories: list[Territory]):
+        """
+        Creates a deck of cards from a list of territories, plus two wildcards.
+
+        :params:
+        territories -- a list of Territories
+
+        :returns:
+        deck        -- a list of Cards
+        """
         deck = list()
         designs = list(Design)
         for territory in territories:
             deck.append(Card(territory, choice(designs)))
         deck.append(Card(None, None, True))
+        deck.append(Card(None, None, True))
+
+        return deck
 
 
 class Rules:
