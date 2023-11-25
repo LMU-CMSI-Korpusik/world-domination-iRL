@@ -28,7 +28,7 @@ def validate(toValidate, condition: bool, message: str, exceptionType=Exception)
     return toValidate
 
 
-def validate_is_type[T](object, type: T) -> T:
+def validate_is_type[T](object, desired_type: T) -> T:
     """
     Validates whether an object is a given type or not
 
@@ -39,6 +39,6 @@ def validate_is_type[T](object, type: T) -> T:
     :returns:\n
     object  --  the validated object confirmed to be a certain type
     """
-    objectType = type(object)
+    object_type = type(object)
 
-    return validate(object, objectType is type, f'Expected {type}, but got {objectType}', TypeError)
+    return validate(object, object_type is desired_type, f'Expected {desired_type}, but got {object_type}', TypeError)
