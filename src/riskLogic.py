@@ -5,7 +5,8 @@ Author: Kieran Ahn
 Date: 11/23/2023
 """
 from riskGame import *
-from random import shuffle
+from random import shuffle, choice, seed
+from classicGame import classic_continents, classic_territories
 
 """
 PSEUDOCODE FOR RUNNING THE GAME:
@@ -31,6 +32,7 @@ PSEUDOCODE FOR RUNNING THE GAME:
                 over = True
                 break
 """
+seed(1234)
 
 
 @dataclass
@@ -105,7 +107,7 @@ class Board:
     The state of the game board, including territories, continents, players, 
     and armies.
     """
-    territories: set[Territory]
+    territories: dict[Territory, set[Territory]]
     armies: dict[Territory, int]
     continents: set[Continent]
     players: list[Player]
@@ -119,7 +121,7 @@ class Board:
         :params:\n
         player  --  a Player
         """
-        if len(self.territories.difference(validate_is_type(player, Player).territories)) == 0:
+        if len(self.territories) - len(player.territories) == 0:
             return True
         return False
 
@@ -156,6 +158,14 @@ class Board:
             self.deck.append(card)
 
         shuffle(self.deck)
+
+    @staticmethod
+    def make_deck(territories):
+        deck = list()
+        designs = list(Design)
+        for territory in territories:
+            deck.append(Card(territory, choice(designs)))
+        deck.append(Card(None, None, True))
 
 
 class Rules:
@@ -275,3 +285,18 @@ class Rules:
         armies                  --  the amount of armies awarded
         """
         return max(3, occupied_territories // 3)
+
+
+class ClassicBoard(Board):
+    """
+    A classic Risk board, with 42 territories, one card for each territory,
+    and two wildcards, organized into 6 continents
+    """
+
+    def __init__(self, players: list[Player]):
+        self.territories = classic_territories
+        self.continents = classic_continents
+        self.armies = dict()
+        self.deck = self.make_deck(list(classic_territories.keys()))
+        self.matches_traded = 0
+        self.players = [validate_is_type(player, Player) for player in players]
