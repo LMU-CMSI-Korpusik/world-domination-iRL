@@ -9,30 +9,6 @@ from dataclasses import field
 from random import shuffle, choice, seed
 from classicGame import classic_continents, classic_territories
 
-"""
-PSEUDOCODE FOR RUNNING THE GAME:
-    initialize game board from settings (# of players, territories)
-    assign armies to players
-    get player turn order (list)
-    initial army placement:
-        for player in turn order if there are unclaimed territories:
-            assign army to unclaimed territory
-        for player in turn order while players have armies:
-            assign army to any territory owned by player
-    
-    shuffle cards
-        
-    while over is not True:
-        for player in turn order:
-            player.getNewArmies()
-            player.placeArmies()
-            player.attack()
-            player.fortify()
-            eliminate dead players
-            if player has won:
-                over = True
-                break
-"""
 seed(1234)
 
 
@@ -42,7 +18,7 @@ class Player:
     An agent who will play Risk. Interface to be implemented.
     """
     name: str
-    territories: set[Territory] = field(default_factory=set)
+    territories: dict[Territory, int] = field(default_factory=dict)
     hand: list[Card] = field(default_factory=list)
 
     def choose_action():
@@ -126,18 +102,43 @@ class Board:
             return True
         return False
 
+    def add_armies(self, territory: Territory, armies: int):
+        """
+        Adds a number of armies to a Territory
+
+        :params:\n
+        territory   -- a Territory
+        armies      -- the number of armies to add to the Territory
+        """
+        validated_armies = validate_is_type(armies, int)
+        self.armies[validate_is_type(territory, Territory)] = validated_armies
+
     def set_armies(self, territory: Territory, armies: int):
         """
-        Updates the amount of armies on a territory
+        Updates the amount of armies on a Territory
 
         :params:\n
         territory   --  a Territory\n
-        armies      --  the new amount of armies on territory
+        armies      --  the new amount of armies on Territory
         """
         validated_armies = validate_is_type(armies, int)
         validated_armies = validate(
             validated_armies, validated_armies > 0, 'Territories must hold at least 1 army', ValueError)
         self.armies[validate_is_type(territory, Territory)] = validated_armies
+
+    def claim(self, territory: Territory):
+        """
+        Claims a territory, setting its armies to 1.
+
+        :params:\n
+        territory   --  a Territory
+        """
+        validate_is_type(territory, Territory)
+        validate(None, territory in self.territories,
+                 'Cannot claim a nonexistent territory', ValueError)
+        validate(None, self.armies[territory] == 0, f'Territory {
+                 territory.name} has already been claimed', ValueError)
+        self.armies[territory] = 1
 
     def draw(self) -> Card:
         """
@@ -160,6 +161,12 @@ class Board:
 
         shuffle(self.deck)
 
+    def shuffle_deck(self):
+        """
+        Shuffles the deck
+        """
+        shuffle(self.deck)
+
     @staticmethod
     def make_deck(territories: list[Territory]):
         """
@@ -179,6 +186,33 @@ class Board:
         deck.append(Card(None, None, True))
 
         return deck
+
+    def reset(self):
+        self.armies = {territory: 0 for territory in list(self.territories)}
+        self.deck = self.make_deck(list(self.territories.keys()))
+        self.matches_traded = 0
+
+
+class ClassicBoard(Board):
+    """
+    A classic Risk board, with 42 territories, one card for each territory,
+    and two wildcards, organized into 6 continents
+    """
+
+    def __init__(self, players: list[Player]):
+        """
+        The classic board configuration is set, and the only thing that needs
+        to be supplied is the players.
+
+        :params:\n
+        players     --  a list of Players
+        """
+        self.territories = classic_territories
+        self.continents = classic_continents
+        self.armies = {territory: 0 for territory in list(self.territories)}
+        self.deck = self.make_deck(list(classic_territories.keys()))
+        self.matches_traded = 0
+        self.players = [validate_is_type(player, Player) for player in players]
 
 
 class Rules:
@@ -300,23 +334,94 @@ class Rules:
         return max(3, occupied_territories // 3)
 
 
-class ClassicBoard(Board):
+class Risk:
     """
-    A classic Risk board, with 42 territories, one card for each territory,
-    and two wildcards, organized into 6 continents
+    A game of Risk, which handles turn order, soliciting actions from Players, 
+    and applying those actions to the Board.
     """
 
-    def __init__(self, players: list[Player]):
+    def __init__(self, players: list[Player], rules: Rules, board: Board):
         """
-        The classic board configuration is set, and the only thing that needs
-        to be supplied is the players.
+        A Risk game needs players, rules, and a board to play on.
 
-        :params:\n
+        :params:
         players     --  a list of Players
+        rules       --  a Rules
+        board       --  a Board
         """
-        self.territories = classic_territories
-        self.continents = classic_continents
-        self.armies = dict()
-        self.deck = self.make_deck(list(classic_territories.keys()))
-        self.matches_traded = 0
         self.players = [validate_is_type(player, Player) for player in players]
+        self.rules = validate_is_type(rules, Rules)
+        self.board = validate_is_type(board, Board)
+        self.territory_indices = {territory: index for index,
+                                  territory in enumerate(list(board.territories))}
+
+    def play(self, quiet=True):
+        """
+PSEUDOCODE FOR RUNNING THE GAME:
+    initialize game board from settings (# of players, territories)
+    assign armies to players
+    get player turn order (list)
+    initial army placement:
+        for player in turn order if there are unclaimed territories:
+            assign army to unclaimed territory
+        for player in turn order while players have armies:
+            assign army to any territory owned by player
+
+    shuffle cards
+
+    while over is not True:
+        for player in turn order:
+            player.getNewArmies()
+            player.placeArmies()
+            player.attack()
+            player.fortify()
+            eliminate dead players
+            if player has won:
+                over = True
+                break
+        """
+
+        # Initial army placement
+        initial_armies = self.rules.get_initial_armies(len(self.players))
+        player_order = [player for player in self.players]
+        shuffle(player_order)
+        starting_armies = {player: initial_armies for player in player_order}
+
+        free_territories = set(self.board.territories.keys())
+        last_player = None
+
+        while len(free_territories) != 0:
+            for player in player_order:
+                claim = player.claim(self.board, free_territories)
+                starting_armies[player] -= 1
+                free_territories.remove(claim)
+                self.board.claim(claim)
+                if len(free_territories == 0):
+                    last_player = player
+                    break
+
+        self.fix_player_order(player_order, last_player)
+
+        while all([armies > 0 for armies in starting_armies.values()]):
+            for player in player_order:
+                if starting_armies[player] == 0:
+                    continue
+                territory, armies_placed = player.place_armies(self.board, 1)
+                starting_armies[player] -= 1
+                self.board.add_armies(territory, armies_placed)
+                last_player = player
+
+        self.fix_player_order(player_order, last_player)
+
+        self.board.shuffle_deck()
+
+        gaming = True
+
+        while gaming:
+            for player in player_order:
+                raise NotImplementedError("I'm gonna do this later.")
+
+    @staticmethod
+    def fix_player_order(player_order: list[Player], starting_player: Player):
+        while player_order[0] != starting_player:
+            player_order.append(player_order.pop(0))
