@@ -157,7 +157,7 @@ class Player:
         return len(self.territories)
 
     def is_lose(self):
-        return self.occupied_territories == 0
+        return self.occupied_territories() == 0
 
 
 @dataclass
@@ -545,6 +545,8 @@ class Risk:
                         for card in cards:
                             player.remove_card(card)
 
+                        # self.board.matches_traded += 1
+
                 while armies_awarded != 0:
                     territory, armies_placed = player.place_armies(
                         self.board, armies_awarded)
@@ -620,7 +622,7 @@ class Risk:
                             if not quiet:
                                 print(f'{player.name} has won the game!')
 
-                                break
+                            break
 
                 if earned_card:
                     player.add_card(self.board.draw())
