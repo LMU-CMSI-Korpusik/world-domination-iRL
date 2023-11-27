@@ -52,7 +52,7 @@ class RandomPlayer(Player):
         base = rng.choice(list(valid_bases))
 
         attacking_armies = rng.integers(
-            1, min(board.armies[base], 3, endpoint=True))
+            1, min(board.armies[base], 3), endpoint=True)
 
         return target, base, int(attacking_armies)
 
