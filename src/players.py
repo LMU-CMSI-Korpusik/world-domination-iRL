@@ -53,6 +53,9 @@ class RandomPlayer(Player):
 
         return target, base, attacking_armies
 
+    def capture(self, board: Board, target: Territory, base: Territory, attacking_armies: int) -> int:
+        return random.randint(attacking_armies, board.armies[base] - 1)
+
     def defend(self, board_state: Board, target: Territory) -> int:
         return random.randint(1, min(board_state.armies[target], 2))
 

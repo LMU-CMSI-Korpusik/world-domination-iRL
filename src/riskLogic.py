@@ -51,6 +51,12 @@ class Player:
         """
         raise NotImplementedError("Cannot call attack on base Player class")
 
+    def capture(self, board: Board, target: Territory, base: Territory, attacking_armies: int) -> int:
+        """
+        TODO: document this
+        """
+        raise NotImplementedError("Cannot call capture on base Player classs")
+
     def defend(self, board: Board, target: Territory) -> int:
         """
         TODO: document this
@@ -579,7 +585,7 @@ class Risk:
 
                     if self.board.armies[target] == 0:
                         armies_moved = player.capture(
-                            self.board, target, base, armies_to_attack)
+                            self.board, target, base, armies_to_attack - attacker_losses)
                         self.board.territory_owners[target] = player
                         targeted_player.remove_territory(target)
                         self.board.set_armies(target, armies_moved)
