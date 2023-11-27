@@ -67,6 +67,13 @@ class Player:
         """
         raise NotImplementedError("Cannot call use_cards on base Player class")
 
+    def choose_extra_deployment(self, board_state: Board, potential_territories: list[Territory]) -> Territory:
+        """
+        TODO: document this
+        """
+        raise NotImplementedError(
+            "Cannot call choose_extra_deployment on base Player class")
+
     def add_territory(self, territory: Territory):
         """
         Adds a Territory to the player's Territories, for when a territory is
