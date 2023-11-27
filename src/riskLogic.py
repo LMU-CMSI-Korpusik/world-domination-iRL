@@ -21,10 +21,10 @@ class Player:
     """
     An agent who will play Risk. Interface to be implemented.
 
-    :fields:
-    name        --  the Player's name
+    :fields:\n
+    name        --  the Player's name\n
     territories --  a dict of the Territories owned by the player and their
-    corresponding indices in the sparse row
+    corresponding indices in the sparse row\n
     hand        --  the Player's hand of Cards
     """
     name: str
@@ -60,6 +60,12 @@ class Player:
         TODO: document this
         """
         raise NotImplementedError("Cannot call fortify on base Player class")
+
+    def use_cards(self, board_state: Board) -> tuple[Card, Card, Card]:
+        """
+        TODO: document this
+        """
+        raise NotImplementedError("Cannot call use_cards on base Player class")
 
     def add_territory(self, territory: Territory):
         """
@@ -481,7 +487,34 @@ PSEUDOCODE FOR RUNNING THE GAME:
                     if continent.territories.issubset(player_occupied_territories):
                         armies_awarded += continent.armies_awarded
 
-                # TODO: handle turning in cards for armies here
+                if len(player.hand) > 2:
+                    cards = player.use_cards(self.board)
+
+                    if cards is not None:
+                        card_armies = self.rules.get_armies_from_card_match(
+                            self.board.matches_traded)
+                        armies_awarded += card_armies
+
+                        extra_deployments = [
+                            card.territory for card in cards if card.territory in player.territories]
+
+                        extra_deployment_message = '.'
+
+                        if len(extra_deployments) != 0:
+                            extra_armies_territory = player.choose_extra_deployment(
+                                self.board, extra_deployments)
+
+                            self.board.add_armies(extra_armies_territory, 2)
+                            extra_deployment_message = f', plus two extra armies on {
+                                extra_armies_territory.name}'
+
+                        if not quiet:
+                            print(f'{player.name} traded in three cards for {
+                                  card_armies} armies' + extra_deployment_message)
+
+                        self.board.return_and_shuffle(*cards)
+                        for card in cards:
+                            player.remove_card(card)
 
                 while armies_awarded != 0:
                     territory, armies_placed = player.place_armies(
