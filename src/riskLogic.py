@@ -76,15 +76,17 @@ class Player:
         raise NotImplementedError(
             "Cannot call choose_extra_deployment on base Player class")
 
-    def add_territory(self, territory: Territory):
+    def add_territory(self, territory: Territory, territory_index: int):
         """
         Adds a Territory to the player's Territories, for when a territory is
         captured during play or at the beginning of the game.
 
         :params:\n
-        territory   --  a Territory
+        territory       --  a Territory
+        territory_index --  the Territory's index in the sparse row
         """
-        self.territories.add(validate_is_type(territory, Territory))
+        self.territories.update(
+            {validate_is_type(territory, Territory): territory_index})
 
     def remove_territory(self, territory: Territory):
         """
@@ -156,12 +158,13 @@ class Board:
     and armies.
     """
     territories: dict[Territory, set[Territory]]
-    territory_owners = dict[Territory, Player]
     armies: dict[Territory, int]
     continents: set[Continent]
     players: list[Player]
     deck: list[Card]
+    territory_owners: dict[Territory, Player] = field(default_factory=dict)
     matches_traded: int = 0
+    territory_to_index: dict[Territory, int] = field(default_factory=dict)
 
     def is_win(self, player: Player):
         """
@@ -286,7 +289,10 @@ class ClassicBoard(Board):
         self.armies = {territory: 0 for territory in list(self.territories)}
         self.deck = self.make_deck(list(classic_territories.keys()))
         self.matches_traded = 0
+        self.territory_owners = dict()
         self.players = [validate_is_type(player, Player) for player in players]
+        self.territory_to_index = {
+            territory: index for index, territory in enumerate(list(self.territories))}
 
 
 class Rules:
@@ -442,17 +448,18 @@ class Risk:
         random.shuffle(player_order)
         starting_armies = {player: initial_armies for player in player_order}
 
-        free_territories = set(self.board.territories.keys())
+        free_territories = list(self.board.territories.keys())
         last_player = None
 
         while len(free_territories) != 0:
             for player_index in player_order:
                 player = self.index_to_player[player_index]
                 claim = player.get_claim(self.board, free_territories)
-                starting_armies[player] -= 1
+                starting_armies[player_index] -= 1
                 free_territories.remove(claim)
-                self.board.claim(claim, Player)
-                player.add_territory(claim)
+                self.board.claim(claim, player)
+                player.add_territory(
+                    claim, self.board.territory_to_index[claim])
                 if len(free_territories == 0):
                     last_player = player_index
                     break
