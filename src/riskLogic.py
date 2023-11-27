@@ -6,10 +6,10 @@ Date: 11/23/2023
 """
 from riskGame import *
 from dataclasses import field
-from random import shuffle, choice, seed, randint
+import random
 from classicGame import classic_continents, classic_territories
 
-seed(1234)
+random.seed(1234)
 
 
 class Board:
@@ -207,13 +207,13 @@ class Board:
         for card in cards:
             self.deck.append(card)
 
-        shuffle(self.deck)
+        random.shuffle(self.deck)
 
     def shuffle_deck(self):
         """
         Shuffles the deck
         """
-        shuffle(self.deck)
+        random.shuffle(self.deck)
 
     @staticmethod
     def make_deck(territories: list[Territory]):
@@ -229,7 +229,7 @@ class Board:
         deck = list()
         designs = list(Design)
         for territory in territories:
-            deck.append(Card(territory, choice(designs)))
+            deck.append(Card(territory, random.choice(designs)))
         deck.append(Card(None, None, True))
         deck.append(Card(None, None, True))
 
@@ -432,7 +432,7 @@ PSEUDOCODE FOR RUNNING THE GAME:
         # Initial army placement
         initial_armies = self.rules.get_initial_armies(len(self.players))
         player_order = [player for player in self.players]
-        shuffle(player_order)
+        random.shuffle(player_order)
         starting_armies = {player: initial_armies for player in player_order}
 
         free_territories = set(self.board.territories.keys())
@@ -539,9 +539,9 @@ PSEUDOCODE FOR RUNNING THE GAME:
                         print(f'{player.name} attacks {target.name} from {base.name} with {
                               armies_to_attack} armies. {targeted_player.name} defends with {armies_to_defend} armies.')
 
-                    attacker_rolls = [randint(1, 6)
+                    attacker_rolls = [random.randint(1, 6)
                                       for i in range(armies_to_attack)]
-                    defender_rolls = [randint(1, 6)
+                    defender_rolls = [random.randint(1, 6)
                                       for i in range(armies_to_defend)]
 
                     if not quiet:
