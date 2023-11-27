@@ -156,6 +156,9 @@ class Player:
     def occupied_territories(self):
         return len(self.territories)
 
+    def is_lose(self):
+        return self.occupied_territories == 0
+
 
 @dataclass
 class Board:
