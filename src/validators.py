@@ -7,7 +7,7 @@ Date: 11/23/2023
 """
 
 
-def validate(toValidate, condition: bool, message: str, exceptionType=Exception):
+def validate(toValidate, condition: bool, message: str, exceptionType: Exception = Exception):
     """
     Basic validator function, which evaluates a condition and raises an error
     if that condition is not met.
@@ -28,7 +28,7 @@ def validate(toValidate, condition: bool, message: str, exceptionType=Exception)
     return toValidate
 
 
-def validate_is_type[T](object, desired_type: T) -> T:
+def validate_is_type[T](object, desired_type: T):
     """
     Validates whether an object is a given type or not
 
