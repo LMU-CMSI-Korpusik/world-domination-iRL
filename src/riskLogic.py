@@ -192,7 +192,7 @@ class Board:
         armies      --  the number of armies to add to the Territory
         """
         validated_armies = validate_is_type(armies, int)
-        self.armies[validate_is_type(territory, Territory)] = validated_armies
+        self.armies[validate_is_type(territory, Territory)] += validated_armies
 
     def set_armies(self, territory: Territory, armies: int):
         """
@@ -454,7 +454,7 @@ class Risk:
         random.shuffle(player_order)
         starting_armies = {player: initial_armies for player in player_order}
 
-        free_territories = list(self.board.territories.keys())
+        free_territories = set(self.board.territories.keys())
         last_player = None
 
         while len(free_territories) != 0:
@@ -466,7 +466,7 @@ class Risk:
                 self.board.claim(claim, player)
                 player.add_territory(
                     claim, self.board.territory_to_index[claim])
-                if len(free_territories == 0):
+                if len(free_territories) == 0:
                     last_player = player_index
                     break
 
@@ -475,10 +475,10 @@ class Risk:
         while all([armies > 0 for armies in starting_armies.values()]):
             for player_index in player_order:
                 player = self.index_to_player[player_index]
-                if starting_armies[player] == 0:
+                if starting_armies[player_index] == 0:
                     continue
                 territory, armies_placed = player.place_armies(self.board, 1)
-                starting_armies[player] -= 1
+                starting_armies[player_index] -= 1
                 self.board.add_armies(territory, armies_placed)
                 last_player = player_index
 
@@ -562,7 +562,7 @@ class Risk:
                         self.board, target)
 
                     if not quiet:
-                        print(f'{player.name} attacks {target.name} from {base.name} with {
+                        print(f'{player.name} attacks {target.name} ({self.board.armies[target]} armies) from {base.name} ({self.board.armies[base]} armies) with {
                               armies_to_attack} armies. {targeted_player.name} defends with {armies_to_defend} armies.')
 
                     attacker_rolls = [random.randint(1, 6)
