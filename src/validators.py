@@ -41,4 +41,4 @@ def validate_is_type[T](object, desired_type: T):
     """
     object_type = type(object)
 
-    return validate(object, object_type is desired_type, f'Expected {desired_type}, but got {object_type}', TypeError)
+    return validate(object, object_type is desired_type or issubclass(object_type, desired_type), f'Expected {desired_type}, but got {object_type}', TypeError)
