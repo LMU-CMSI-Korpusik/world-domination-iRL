@@ -65,10 +65,6 @@ class RandomPlayer(Player):
         return target, base, int(attacking_armies)
 
     def capture(self, board: Board, target: Territory, base: Territory, attacking_armies: int) -> int:
-        print('aaaaaaaaaaaaaaa')
-        print(board.armies[base])
-        print(attacking_armies)
-        print('AAAAAAAAAAAAAAAAAAAAAA')
         if board.armies[base] - 1 == attacking_armies:
             return attacking_armies
         return int(rng.integers(attacking_armies, board.armies[base]))
@@ -117,7 +113,10 @@ class RandomPlayer(Player):
         return destination, source, fortifying_armies
 
     def use_cards(self, board: Board) -> tuple[Card, Card, Card]:
-        return rng.choice(Rules.get_matching_cards(self.hand))
+        matches = Rules.get_matching_cards(self.hand)
+        if len(matches) == 0:
+            return None
+        return rng.choice(matches)
 
     def choose_extra_deployment(self, board: Board, potential_territories: list[Territory]) -> Territory:
         return rng.choice(potential_territories)
