@@ -471,12 +471,17 @@ PSEUDOCODE FOR RUNNING THE GAME:
 
                 if not quiet:
                     print(f"{player.name}'s turn!")
+
                 armies_awarded = self.rules.get_armies_from_territories_occupied(
                     player.occupied_territories())
+
                 player_occupied_territories = player.territories.keys()
+
                 for continent in self.board.continents:
                     if continent.territories.issubset(player_occupied_territories):
                         armies_awarded += continent.armies_awarded
+
+                # TODO: handle turning in cards for armies here
 
                 while armies_awarded != 0:
                     territory, armies_placed = player.place_armies(
