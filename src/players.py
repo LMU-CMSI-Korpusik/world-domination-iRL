@@ -21,7 +21,13 @@ class RandomPlayer(Player):
         return rng.choice(list(free_territories))
 
     def place_armies(self, board: Board, armies_to_place: int) -> tuple[Territory, int]:
-        return (rng.choice(list(self.territories)), int(rng.integers(1, armies_to_place, endpoint=True)))
+        armies_placed = None
+        if armies_to_place == 1:
+            armies_placed = 1
+        else:
+            armies_placed = int(rng.integers(
+                1, armies_to_place, endpoint=True))
+        return (rng.choice(list(self.territories)), armies_placed)
 
     def attack(self, board: Board) -> tuple[Territory, Territory, int]:
         stop_attack = rng.random() * (self.occupied_territories() + 1) < 1
@@ -51,16 +57,23 @@ class RandomPlayer(Player):
 
         base = rng.choice(list(valid_bases))
 
+        attacking_armies = None
+
         attacking_armies = rng.integers(
             1, min(board.armies[base], 3), endpoint=True)
 
         return target, base, int(attacking_armies)
 
     def capture(self, board: Board, target: Territory, base: Territory, attacking_armies: int) -> int:
+        if board.armies[base] - 1 == attacking_armies:
+            return attacking_armies
         return int(rng.integers(attacking_armies, board.armies[base]))
 
     def defend(self, board_state: Board, target: Territory) -> int:
-        return int(rng.integers(1, min(board_state.armies[target], 2), endpoint=True))
+        if board_state.armies[target] == 1:
+            return 1
+        else:
+            return int(rng.integers(1, 2), endpoint=True)
 
     def fortify(self, board: Board) -> tuple[Territory, Territory, int]:
         no_fortify = rng.random() * (self.occupied_territories() + 1) < 1
@@ -90,7 +103,14 @@ class RandomPlayer(Player):
 
         source = rng.choice(list(valid_sources))
 
-        return destination, source, int(rng.integers(1, board.armies[source]))
+        fortifying_armies = None
+
+        if board.armies[source] == 2:
+            fortifying_armies = 1
+        else:
+            fortifying_armies = int(rng.integers(1, board.armies[source]))
+
+        return destination, source, fortifying_armies
 
     def use_cards(self, board: Board) -> tuple[Card, Card, Card]:
         return rng.choice(Rules.get_matching_cards(self.hand))
