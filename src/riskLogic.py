@@ -104,7 +104,7 @@ class Player:
         """
         validated_territory = validate_is_type(territory, Territory)
         if validated_territory in self.territories:
-            self.territories.remove(validated_territory)
+            del self.territories[validated_territory]
         else:
             raise ValueError(
                 f'Player {self.name} does not own {validated_territory.name}'
