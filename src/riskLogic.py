@@ -461,7 +461,12 @@ PSEUDOCODE FOR RUNNING THE GAME:
         gaming = True
 
         while gaming:
+            dead_players = list()
+
             for player in player_order:
+                if player in dead_players:
+                    continue
+
                 earned_card = False
 
                 if not quiet:
@@ -526,9 +531,24 @@ PSEUDOCODE FOR RUNNING THE GAME:
                         if not quiet:
                             print(f'{player.name} has captured {target.name}. {target.name} now has {
                                   armies_moved} armies. {base.name} now has {self.board.armies[base]} armies.')
-                    elif self.board.armies[target] < 0:
-                        raise RuntimeError(f'Attack by {
-                                           player.name} resulted in negative number of armies on {target.name}')
+                        elif self.board.armies[target] < 0:
+                            raise RuntimeError(f'Attack by {
+                                player.name} resulted in negative number of armies on {target.name}')
+
+                        if targeted_player.is_lose():
+                            dead_players.append(targeted_player)
+
+                            if not quiet:
+                                print(f'{player.name} has eliminated {
+                                      targeted_player.name}!')
+
+                        if self.board.is_win(player):
+                            gaming = False
+
+                            if not quiet:
+                                print(f'{player.name} has won the game!')
+
+                                break
 
                 if earned_card:
                     player.add_card(self.board.draw())
