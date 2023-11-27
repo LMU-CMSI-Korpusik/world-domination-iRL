@@ -60,11 +60,15 @@ class RandomPlayer(Player):
         attacking_armies = None
 
         attacking_armies = rng.integers(
-            1, min(board.armies[base], 3), endpoint=True)
+            1, min(board.armies[base] - 1, 3), endpoint=True)
 
         return target, base, int(attacking_armies)
 
     def capture(self, board: Board, target: Territory, base: Territory, attacking_armies: int) -> int:
+        print('aaaaaaaaaaaaaaa')
+        print(board.armies[base])
+        print(attacking_armies)
+        print('AAAAAAAAAAAAAAAAAAAAAA')
         if board.armies[base] - 1 == attacking_armies:
             return attacking_armies
         return int(rng.integers(attacking_armies, board.armies[base]))
