@@ -6,16 +6,26 @@ Date: 11/23/2023
 """
 from riskGame import *
 from dataclasses import field
-from random import shuffle, choice, seed
+from random import shuffle, choice, seed, randint
 from classicGame import classic_continents, classic_territories
 
 seed(1234)
+
+
+class Board:
+    pass
 
 
 @dataclass
 class Player:
     """
     An agent who will play Risk. Interface to be implemented.
+
+    :fields:
+    name        --  the Player's name
+    territories --  a dict of the Territories owned by the player and their
+    corresponding indices in the sparse row
+    hand        --  the Player's hand of Cards
     """
     name: str
     territories: dict[Territory, int] = field(default_factory=dict)
@@ -23,7 +33,33 @@ class Player:
 
     def choose_action():
         raise NotImplementedError(
-            "Cannot call choose_action from base player class")
+            "Cannot call choose_action from base Player class")
+
+    def get_claim(self, board_state: Board, free_territories: set[Territory]) -> Territory:
+        raise NotImplementedError(
+            "Cannot call get_claim from base Player class")
+
+    def place_armies(self, board_state: Board, armies_to_place: int) -> tuple[Territory, int]:
+        raise NotImplementedError(
+            "Cannot call place_armies on base Player class")
+
+    def attack(self, board_state: Board) -> tuple[Territory, Territory, int]:
+        """
+        TODO: document this
+        """
+        raise NotImplementedError("Cannot call attack on base Player class")
+
+    def defend(self, board_state: Board, target: Territory) -> int:
+        """
+        TODO: document this
+        """
+        raise NotImplementedError("Cannot call defend on base Player class")
+
+    def fortify(self, board_state: Board) -> tuple[Territory, Territory, int]:
+        """
+        TODO: document this
+        """
+        raise NotImplementedError("Cannot call fortify on base Player class")
 
     def add_territory(self, territory: Territory):
         """
@@ -77,6 +113,9 @@ class Player:
                 f'Player {self.name} does not have card {card} in their hand.'
             )
 
+    def occupied_territories(self):
+        return len(self.territories)
+
 
 @dataclass
 class Board:
@@ -85,6 +124,7 @@ class Board:
     and armies.
     """
     territories: dict[Territory, set[Territory]]
+    territory_owners = dict[Territory, Player]
     armies: dict[Territory, int]
     continents: set[Continent]
     players: list[Player]
@@ -107,8 +147,8 @@ class Board:
         Adds a number of armies to a Territory
 
         :params:\n
-        territory   -- a Territory
-        armies      -- the number of armies to add to the Territory
+        territory   --  a Territory
+        armies      --  the number of armies to add to the Territory
         """
         validated_armies = validate_is_type(armies, int)
         self.armies[validate_is_type(territory, Territory)] = validated_armies
@@ -126,12 +166,13 @@ class Board:
             validated_armies, validated_armies > 0, 'Territories must hold at least 1 army', ValueError)
         self.armies[validate_is_type(territory, Territory)] = validated_armies
 
-    def claim(self, territory: Territory):
+    def claim(self, territory: Territory, player: Player):
         """
         Claims a territory, setting its armies to 1.
 
         :params:\n
         territory   --  a Territory
+        player      --  the Player who claimed the Territory
         """
         validate_is_type(territory, Territory)
         validate(None, territory in self.territories,
@@ -139,6 +180,7 @@ class Board:
         validate(None, self.armies[territory] == 0, f'Territory {
                  territory.name} has already been claimed', ValueError)
         self.armies[territory] = 1
+        self.territory_owners[territory] = player
 
     def draw(self) -> Card:
         """
@@ -392,10 +434,11 @@ PSEUDOCODE FOR RUNNING THE GAME:
 
         while len(free_territories) != 0:
             for player in player_order:
-                claim = player.claim(self.board, free_territories)
+                claim = player.get_claim(self.board, free_territories)
                 starting_armies[player] -= 1
                 free_territories.remove(claim)
-                self.board.claim(claim)
+                self.board.claim(claim, Player)
+                player.add_territory(claim)
                 if len(free_territories == 0):
                     last_player = player
                     break
@@ -419,7 +462,87 @@ PSEUDOCODE FOR RUNNING THE GAME:
 
         while gaming:
             for player in player_order:
-                raise NotImplementedError("I'm gonna do this later.")
+                earned_card = False
+
+                if not quiet:
+                    print(f"{player.name}'s turn!")
+                armies_awarded = self.rules.get_armies_from_territories_occupied(
+                    player.occupied_territories())
+                player_occupied_territories = player.territories.keys()
+                for continent in self.board.continents:
+                    if continent.territories.issubset(player_occupied_territories):
+                        armies_awarded += continent.armies_awarded
+
+                while armies_awarded != 0:
+                    territory, armies_placed = player.place_armies(
+                        self.board, armies_awarded)
+                    self.board.add_armies(territory, armies_placed)
+                    armies_awarded -= armies_placed
+                    if not quiet:
+                        print(f'{player.name} placed {
+                              armies_placed} armies on {territory.name}.')
+
+                attacking = True
+                while attacking:
+                    target, base, armies_to_attack = player.attack(self.board)
+                    if target is None:
+                        attacking = False
+                        break
+                    targeted_player = self.board.territory_owners[target]
+                    armies_to_defend = targeted_player.defend(
+                        self.board, target)
+
+                    if not quiet:
+                        print(f'{player.name} attacks {target.name} from {base.name} with {
+                              armies_to_attack} armies. {targeted_player.name} defends with {armies_to_defend} armies.')
+
+                    attacker_rolls = [randint(1, 6)
+                                      for i in range(armies_to_attack)]
+                    defender_rolls = [randint(1, 6)
+                                      for i in range(armies_to_defend)]
+
+                    if not quiet:
+                        print(f'{player.name} rolls: {attacker_rolls}; {
+                              targeted_player.name} rolls: {defender_rolls}')
+
+                    attacker_losses, defender_losses = self.rules.resolve_attack(
+                        attacker_rolls, defender_rolls)
+                    self.board.add_armies(base, -attacker_losses)
+                    self.board.add_armies(target, -defender_losses)
+
+                    if not quiet:
+                        print(f'attacker losses: {attacker_losses}; defender losses: {defender_losses}\n{base.name} now has {
+                              self.board.armies[base]} armies; {target.name} now has {self.board.armies[target]} armies.')
+
+                    if self.board.armies[target] == 0:
+                        earned_card = True
+                        armies_moved = player.capture(
+                            self.board, target, base, armies_to_attack)
+                        self.board.territory_owners[target] = player
+                        targeted_player.remove_territory(target)
+                        self.board.set_armies(target, armies_moved)
+                        self.board.add_armies(base, -armies_moved)
+
+                        if not quiet:
+                            print(f'{player.name} has captured {target.name}. {target.name} now has {
+                                  armies_moved} armies. {base.name} now has {self.board.armies[base]} armies.')
+                    elif self.board.armies[target] < 0:
+                        raise RuntimeError(f'Attack by {
+                                           player.name} resulted in negative number of armies on {target.name}')
+
+                if earned_card:
+                    player.add_card(self.board.draw())
+
+                destination, source, armies = player.fortify(self.board)
+                if destination is not None:
+                    self.board.add_armies(destination, armies)
+                    self.board.add_armies(source, -armies)
+
+                    if not quiet:
+                        print(f'{player.name} has fortified {destination.name} with {
+                              armies} armies from {source.name}.')
+                elif not quiet and destination is None:
+                    print(f'{player.name} chose not to fortify.')
 
     @staticmethod
     def fix_player_order(player_order: list[Player], starting_player: Player):
