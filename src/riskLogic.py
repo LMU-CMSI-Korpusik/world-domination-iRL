@@ -492,8 +492,11 @@ PSEUDOCODE FOR RUNNING THE GAME:
 
         gaming = True
 
+        rounds = 0
+        dead_players = list()
         while gaming:
-            dead_players = list()
+            if rounds > 10000:
+                raise RuntimeError('Game went on too long!')
 
             for player in player_order:
                 if player in dead_players:
@@ -630,6 +633,8 @@ PSEUDOCODE FOR RUNNING THE GAME:
                               armies} armies from {source.name}.')
                 elif not quiet and destination is None:
                     print(f'{player.name} chose not to fortify.')
+
+            rounds += 1
 
     @staticmethod
     def fix_player_order(player_order: list[Player], starting_player: Player):
