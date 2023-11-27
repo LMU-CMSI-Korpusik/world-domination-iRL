@@ -590,6 +590,8 @@ class Risk:
                         armies_moved = player.capture(
                             self.board, target, base, armies_to_attack - attacker_losses)
                         self.board.territory_owners[target] = player
+                        player.add_territory(
+                            target, self.board.territory_to_index[target])
                         targeted_player.remove_territory(target)
                         self.board.set_armies(target, armies_moved)
                         self.board.add_armies(base, -armies_moved)
