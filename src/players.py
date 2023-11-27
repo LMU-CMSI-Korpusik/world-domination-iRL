@@ -21,7 +21,7 @@ class RandomPlayer(Player):
         return rng.choice(list(free_territories))
 
     def place_armies(self, board: Board, armies_to_place: int) -> tuple[Territory, int]:
-        return (rng.choice(list(self.territories)), rng.integers(1, armies_to_place, endpoint=True))
+        return (rng.choice(list(self.territories)), int(rng.integers(1, armies_to_place, endpoint=True)))
 
     def attack(self, board: Board) -> tuple[Territory, Territory, int]:
         stop_attack = rng.random() * (self.occupied_territories() + 1) < 1
@@ -54,13 +54,13 @@ class RandomPlayer(Player):
         attacking_armies = rng.integers(
             1, min(board.armies[base], 3, endpoint=True))
 
-        return target, base, attacking_armies
+        return target, base, int(attacking_armies)
 
     def capture(self, board: Board, target: Territory, base: Territory, attacking_armies: int) -> int:
-        return rng.integers(attacking_armies, board.armies[base])
+        return int(rng.integers(attacking_armies, board.armies[base]))
 
     def defend(self, board_state: Board, target: Territory) -> int:
-        return rng.integers(1, min(board_state.armies[target], 2), endpoint=True)
+        return int(rng.integers(1, min(board_state.armies[target], 2), endpoint=True))
 
     def fortify(self, board: Board) -> tuple[Territory, Territory, int]:
         no_fortify = rng.random() * (self.occupied_territories() + 1) < 1
@@ -90,7 +90,7 @@ class RandomPlayer(Player):
 
         source = rng.choice(list(valid_sources))
 
-        return destination, source, rng.integers(1, board.armies[source])
+        return destination, source, int(rng.integers(1, board.armies[source]))
 
     def use_cards(self, board: Board) -> tuple[Card, Card, Card]:
         return rng.choice(Rules.get_matching_cards(self.hand))
