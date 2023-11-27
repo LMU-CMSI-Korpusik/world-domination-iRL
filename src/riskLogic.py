@@ -546,7 +546,7 @@ class Risk:
                         for card in cards:
                             player.remove_card(card)
 
-                        # self.board.matches_traded += 1
+                        self.board.matches_traded += 1
 
                 while armies_awarded != 0:
                     territory, armies_placed = player.place_armies(
