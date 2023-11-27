@@ -31,15 +31,17 @@ class Player:
     territories: dict[Territory, int] = field(default_factory=dict)
     hand: list[Card] = field(default_factory=list)
 
-    def choose_action():
-        raise NotImplementedError(
-            "Cannot call choose_action from base Player class")
-
     def get_claim(self, board: Board, free_territories: set[Territory]) -> Territory:
+        """
+        TODO: document this
+        """
         raise NotImplementedError(
             "Cannot call get_claim from base Player class")
 
     def place_armies(self, board: Board, armies_to_place: int) -> tuple[Territory, int]:
+        """
+        TODO: document this
+        """
         raise NotImplementedError(
             "Cannot call place_armies on base Player class")
 
@@ -128,12 +130,18 @@ class Player:
 
     @staticmethod
     def get_valid_attack_targets(board: Board, occupied_territories: set[Territory]) -> set:
+        """
+        TODO: document this
+        """
         return {neighbor for territory in occupied_territories
                 for neighbor in board.territories[territory]
                 if neighbor not in occupied_territories}
 
     @staticmethod
     def get_valid_bases(board: Board, target: Territory, occupied_territories: set[Territory]) -> set:
+        """
+        TODO: document this
+        """
         return {neighbor for neighbor in board.territories[target]
                 if neighbor in occupied_territories and board.armies[neighbor] > 2}
 
