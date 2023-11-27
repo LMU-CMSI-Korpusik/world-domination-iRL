@@ -73,7 +73,7 @@ class RandomPlayer(Player):
         if board_state.armies[target] == 1:
             return 1
         else:
-            return int(rng.integers(1, 2))
+            return int(rng.integers(1, 2, endpoint=True))
 
     def fortify(self, board: Board) -> tuple[Territory, Territory, int]:
         no_fortify = rng.random() * (self.occupied_territories() + 1) < 1
