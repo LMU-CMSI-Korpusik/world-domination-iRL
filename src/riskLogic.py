@@ -428,36 +428,17 @@ class Risk:
         self.board = validate_is_type(board, Board)
         self.territory_indices = {territory: index for index,
                                   territory in enumerate(list(board.territories))}
+        self.index_to_player = {index: player for index,
+                                player in enumerate(self.players)}
 
     def play(self, quiet=True):
         """
-PSEUDOCODE FOR RUNNING THE GAME:
-    initialize game board from settings (# of players, territories)
-    assign armies to players
-    get player turn order (list)
-    initial army placement:
-        for player in turn order if there are unclaimed territories:
-            assign army to unclaimed territory
-        for player in turn order while players have armies:
-            assign army to any territory owned by player
-
-    shuffle cards
-
-    while over is not True:
-        for player in turn order:
-            player.getNewArmies()
-            player.placeArmies()
-            player.attack()
-            player.fortify()
-            eliminate dead players
-            if player has won:
-                over = True
-                break
+        TODO: document this
         """
 
         # Initial army placement
         initial_armies = self.rules.get_initial_armies(len(self.players))
-        player_order = [player for player in self.players]
+        player_order = [index for index, player in enumerate(self.players)]
         random.shuffle(player_order)
         starting_armies = {player: initial_armies for player in player_order}
 
@@ -465,26 +446,28 @@ PSEUDOCODE FOR RUNNING THE GAME:
         last_player = None
 
         while len(free_territories) != 0:
-            for player in player_order:
+            for player_index in player_order:
+                player = self.index_to_player[player_index]
                 claim = player.get_claim(self.board, free_territories)
                 starting_armies[player] -= 1
                 free_territories.remove(claim)
                 self.board.claim(claim, Player)
                 player.add_territory(claim)
                 if len(free_territories == 0):
-                    last_player = player
+                    last_player = player_index
                     break
 
         self.fix_player_order(player_order, last_player)
 
         while all([armies > 0 for armies in starting_armies.values()]):
-            for player in player_order:
+            for player_index in player_order:
+                player = self.index_to_player[player_index]
                 if starting_armies[player] == 0:
                     continue
                 territory, armies_placed = player.place_armies(self.board, 1)
                 starting_armies[player] -= 1
                 self.board.add_armies(territory, armies_placed)
-                last_player = player
+                last_player = player_index
 
         self.fix_player_order(player_order, last_player)
 
@@ -498,7 +481,8 @@ PSEUDOCODE FOR RUNNING THE GAME:
             if rounds > 10000:
                 raise RuntimeError('Game went on too long!')
 
-            for player in player_order:
+            for player_index in player_order:
+                player = self.index_to_player[player_index]
                 if player in dead_players:
                     continue
 
