@@ -498,6 +498,7 @@ class Risk:
                 raise RuntimeError('Game went on too long!')
 
             for player_index in player_order:
+                won = False
                 player = self.index_to_player[player_index]
                 if player in dead_players:
                     continue
@@ -618,11 +619,14 @@ class Risk:
 
                         if self.board.is_win(player):
                             gaming = False
+                            won = True
+                            attacking = False
 
                             if not quiet:
                                 print(f'{player.name} has won the game!')
 
-                            break
+                if won:
+                    break
 
                 if earned_card:
                     player.add_card(self.board.draw())
