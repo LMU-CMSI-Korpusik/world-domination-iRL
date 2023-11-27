@@ -584,13 +584,16 @@ PSEUDOCODE FOR RUNNING THE GAME:
                               self.board.armies[base]} armies; {target.name} now has {self.board.armies[target]} armies.')
 
                     if self.board.armies[target] == 0:
-                        earned_card = True
                         armies_moved = player.capture(
                             self.board, target, base, armies_to_attack)
                         self.board.territory_owners[target] = player
                         targeted_player.remove_territory(target)
                         self.board.set_armies(target, armies_moved)
                         self.board.add_armies(base, -armies_moved)
+
+                        if not earned_card:
+                            earned_card = True
+                            player.add_card(self.board.draw())
 
                         if not quiet:
                             print(f'{player.name} has captured {target.name}. {target.name} now has {
