@@ -35,39 +35,39 @@ class Player:
         raise NotImplementedError(
             "Cannot call choose_action from base Player class")
 
-    def get_claim(self, board_state: Board, free_territories: set[Territory]) -> Territory:
+    def get_claim(self, board: Board, free_territories: set[Territory]) -> Territory:
         raise NotImplementedError(
             "Cannot call get_claim from base Player class")
 
-    def place_armies(self, board_state: Board, armies_to_place: int) -> tuple[Territory, int]:
+    def place_armies(self, board: Board, armies_to_place: int) -> tuple[Territory, int]:
         raise NotImplementedError(
             "Cannot call place_armies on base Player class")
 
-    def attack(self, board_state: Board) -> tuple[Territory, Territory, int]:
+    def attack(self, board: Board) -> tuple[Territory, Territory, int]:
         """
         TODO: document this
         """
         raise NotImplementedError("Cannot call attack on base Player class")
 
-    def defend(self, board_state: Board, target: Territory) -> int:
+    def defend(self, board: Board, target: Territory) -> int:
         """
         TODO: document this
         """
         raise NotImplementedError("Cannot call defend on base Player class")
 
-    def fortify(self, board_state: Board) -> tuple[Territory, Territory, int]:
+    def fortify(self, board: Board) -> tuple[Territory, Territory, int]:
         """
         TODO: document this
         """
         raise NotImplementedError("Cannot call fortify on base Player class")
 
-    def use_cards(self, board_state: Board) -> tuple[Card, Card, Card]:
+    def use_cards(self, board: Board) -> tuple[Card, Card, Card]:
         """
         TODO: document this
         """
         raise NotImplementedError("Cannot call use_cards on base Player class")
 
-    def choose_extra_deployment(self, board_state: Board, potential_territories: list[Territory]) -> Territory:
+    def choose_extra_deployment(self, board: Board, potential_territories: list[Territory]) -> Territory:
         """
         TODO: document this
         """
@@ -125,6 +125,17 @@ class Player:
             raise ValueError(
                 f'Player {self.name} does not have card {card} in their hand.'
             )
+
+    @staticmethod
+    def get_valid_attack_targets(board: Board, occupied_territories: set[Territory]) -> set:
+        return {neighbor for territory in occupied_territories
+                for neighbor in board.territories[territory]
+                if neighbor not in occupied_territories}
+
+    @staticmethod
+    def get_valid_bases(board: Board, target: Territory, occupied_territories: set[Territory]) -> set:
+        return {neighbor for neighbor in board.territories[target]
+                if neighbor in occupied_territories and board.armies[neighbor] > 2}
 
     def occupied_territories(self):
         return len(self.territories)
