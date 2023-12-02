@@ -45,32 +45,47 @@ class RiskNet(nn.Module):
         self.fortify_head_armies = nn.Sigmoid(nn.Linear(hidden_layer, 1))
         self.card_choice_head = nn.Sigmoid(nn.Linear(hidden_layer, 1))
 
-    def forward(self, x, action_taken: Action, territories: list[int] = None):
+    def forward(self, x, action_taken: Action, selectable_territories: list[int] = None):
+        """
+        Forward pass of the model
+
+        :params:
+        x                       --  the state
+        action_taken            --  the action the model is performing
+        selectable_territories  --  a list corresponding to the valid
+        territories that the model can choose from, where 1 = valid, and 0 =
+        invalid
+        """
         hidden_state_out = self.hidden_states(x)
         match(action_taken):
             case Action.ATTACK:
-                validate_is_type(territories, list)
-                target_mask = torch.tensor(territories, device=DEVICE)
+                validate_is_type(selectable_territories, list)
+                target_mask = torch.tensor(
+                    selectable_territories, device=DEVICE)
                 return (nn.Softmax(target_mask * self.attack_head_territory(hidden_state_out)), self.attack_head_armies(hidden_state_out))
             case Action.PLACE:
-                validate_is_type(territories)
-                placement_mask = torch.tensor(territories, device=DEVICE)
+                validate_is_type(selectable_territories)
+                placement_mask = torch.tensor(
+                    selectable_territories, device=DEVICE)
                 return (nn.Softmax(placement_mask * self.placement_head_territory(hidden_state_out)), self.placement_head_armies(hidden_state_out))
             case Action.CLAIM:
-                validate_is_type(territories, list)
-                claim_mask = torch.tensor(territories, device=DEVICE)
+                validate_is_type(selectable_territories, list)
+                claim_mask = torch.tensor(
+                    selectable_territories, device=DEVICE)
                 return nn.Softmax(claim_mask * self.claim_head(hidden_state_out))
             case Action.CAPTURE:
                 return self.capture_head(hidden_state_out)
             case Action.DEFEND:
                 return self.defend_head(hidden_state_out)
             case Action.CHOOSE_FORTIFY_SOURCE:
-                validate_is_type(territories, list)
-                source_mask = torch.tensor(territories, device=DEVICE)
+                validate_is_type(selectable_territories, list)
+                source_mask = torch.tensor(
+                    selectable_territories, device=DEVICE)
                 return nn.Softmax(source_mask * self.fortify_head_source(hidden_state_out))
             case Action.CHOOSE_FORTIFY_TARGET:
-                validate_is_type(territories)
-                destination_mask = torch.tensor(territories, device=DEVICE)
+                validate_is_type(selectable_territories)
+                destination_mask = torch.tensor(
+                    selectable_territories, device=DEVICE)
                 return nn.Softmax((destination_mask * self.fortify_head_target(hidden_state_out)), self.fortify_head_armies(hidden_state_out))
             case Action.CARDS:
                 return self.card_choice_head(hidden_state_out)
