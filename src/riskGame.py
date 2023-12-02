@@ -19,6 +19,21 @@ class Design(Enum):
     ARTILLERY = 2
 
 
+class Action(Enum):
+    """
+    Actions that a player can take.
+    """
+    ATTACK = "attack"
+    DEFEND = "defend"
+    CLAIM = "claim"
+    CAPTURE = "capture"
+    PLACE = "place"
+    FORTIFY = "fortify"
+    CARDS = "cards"
+    CHOOSE_FORTIFY_SOURCE = "source"
+    CHOOSE_FORTIFY_TARGET = "destination"
+
+
 @dataclass(frozen=True)
 class Territory:
     """
