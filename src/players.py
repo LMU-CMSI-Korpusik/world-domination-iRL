@@ -120,3 +120,11 @@ class RandomPlayer(Player):
 
     def choose_extra_deployment(self, board: Board, potential_territories: list[Territory]) -> Territory:
         return rng.choice(potential_territories)
+
+
+class RiskPlayer(Player):
+    """
+    A player that implements RiskNet for decisionmaking.
+    """
+
+    pass
