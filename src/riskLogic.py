@@ -13,6 +13,8 @@ random.seed(1234)
 
 DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
 
+action_to_state_index = {action: index for index, action in enumerate(Action)}
+
 
 class Board:
     pass
@@ -216,13 +218,14 @@ class Player:
         """
         raise NotImplementedError("Cannot call capture on base Player classs")
 
-    def defend(self, board: Board, target: Territory) -> int:
+    def defend(self, board: Board, target: Territory, attacking_armies: int) -> int:
         """
         Asks the player whether to defend a Territory with one or two armies
 
         :params:\n
-        board       --  the game Board\n
-        target      --  the Territory which is being attacked
+        board               --  the game Board\n
+        target              --  the Territory which is being attacked\n
+        attacking_armies    --  the number of armies the attacker is using
 
         :returns:\n
         armies      --  the number of armies with which to defend the Territory
@@ -349,7 +352,8 @@ class Player:
         """
         return {neighbor for territory in occupied_territories
                 for neighbor in board.territories[territory]
-                if neighbor not in occupied_territories}
+                if neighbor not in occupied_territories
+                and board.armies[territory] > 1}
 
     @staticmethod
     def get_valid_bases(board: Board, target: Territory, occupied_territories: set[Territory]) -> set:
@@ -363,7 +367,7 @@ class Player:
         occupied_territories    --  the Territories owned by the Player
         """
         return {neighbor for neighbor in board.territories[target]
-                if neighbor in occupied_territories and board.armies[neighbor] > 2}
+                if neighbor in occupied_territories and board.armies[neighbor] > 1}
 
     def occupied_territories(self):
         return len(self.territories)
@@ -496,19 +500,23 @@ class Board:
                 player.remove_territory(territory)
         self.matches_traded = 0
 
-    def get_state_for_player(self, player: Player):
-        # TODO: add encodings for territory attacked, fortification target, territory to defend
+    def get_state_for_player(self, player: Player, action: Action, armies_used: int = 0, *selected_territories: Territory):
         """
         Returns the state from the view of the supplied player
 
         :params:\n
-        player:     --  The player for which the state is being generated
+        player                  --  The Player for which the state is being
+        generated\n
+        action                  --  The action with which the Player is being 
+        prompted\n
+        armies_used             --  The number of armies used to attack\n
+        selected_territories    --  Any relevant territories, such as targets
 
         :returns\n
         state       --  The state
         """
         territories_state = torch.zeros(
-            6 * len(self.territories), dtype=torch.float)
+            6 * len(self.territories), dtype=torch.double)
         for territory, territory_index in player.territories.items():
             territories_state[territory_index] = 1.0
 
@@ -521,9 +529,16 @@ class Board:
                                   len(self.territories) * other_player_index] = 1.0
             other_player_index += 1
 
-        armies_state = torch.zeros(len(self.territories), dtype=torch.float)
-        for territory, armies in self.armies.items():
-            armies_state[self.territory_to_index[territory]] = float(armies)
+        armies_state = torch.zeros(
+            len(self.territories) + 1, dtype=torch.double)
+        for territory, territory_armies in self.armies.items():
+            armies_state[self.territory_to_index[territory]
+                         ] = float(territory_armies)
+
+        armies_state[len(self.territories)] = float(armies_used)
+
+        action_state = torch.zeros(len(Action), dtype=torch.double)
+        action_state[action_to_state_index[action]] = 1.0
 
         # each card has a territory, a design, and a wildcard status, and you can have at most 8 cards
         card_encoding_length = len(self.territories) + 4
@@ -549,7 +564,12 @@ class Board:
                 case Design.ARTILLERY:
                     cards_state[artillery_offset +
                                 card_encoding_length * index] = 1.0
-        return torch.cat((territories_state, armies_state, cards_state)).to(DEVICE)
+
+        selection_state = torch.zeros(
+            len(self.territories), dtype=torch.double)
+        for territory in selected_territories:
+            selection_state[self.territory_to_index] = 1.0
+        return torch.cat((territories_state, armies_state, cards_state, selection_state)).to(DEVICE)
 
 
 class Risk:
@@ -589,7 +609,7 @@ class Risk:
         matches = self.rules.get_matching_cards(player.hand)
         cards = player.use_cards(self.board, matches)
 
-        card_armies = 0
+        card_armies = -1
 
         if cards is not None:
             card_armies = self.rules.get_armies_from_card_match(
@@ -706,8 +726,16 @@ class Risk:
                     if continent.territories.issubset(player_occupied_territories):
                         armies_awarded += continent.armies_awarded
 
-                if len(player.hand) > 2:
-                    armies_awarded += self.tradein(player, quiet)
+                trading = True
+                while trading:
+                    if len(player.hand) > 2:
+                        trade_armies = self.tradein(player, quiet)
+                        if trade_armies == -1:
+                            trading = False
+                            break
+                        armies_awarded += self.tradein(player, quiet)
+                    else:
+                        break
 
                 self.placement(player, armies_awarded, quiet)
 
@@ -719,7 +747,7 @@ class Risk:
                         break
                     targeted_player = self.board.territory_owners[target]
                     armies_to_defend = targeted_player.defend(
-                        self.board, target)
+                        self.board, target, armies_to_attack)
 
                     if not quiet:
                         print(
