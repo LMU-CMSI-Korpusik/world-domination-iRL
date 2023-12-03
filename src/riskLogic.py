@@ -277,7 +277,10 @@ class Board:
 
     def reset(self):
         self.armies = {territory: 0 for territory in list(self.territories)}
-        self.deck = self.make_deck(list(self.territories.keys()))
+        for player in self.players:
+            player_cards = player.hand
+            self.return_and_shuffle(*player_cards)
+            player.remove_cards(*player_cards)
         self.matches_traded = 0
 
 
@@ -545,8 +548,7 @@ class Risk:
                                   card_armies} armies' + extra_deployment_message)
 
                         self.board.return_and_shuffle(*cards)
-                        for card in cards:
-                            player.remove_card(card)
+                        player.remove_cards(*cards)
 
                         self.board.matches_traded += 1
 
@@ -613,6 +615,9 @@ class Risk:
 
                         if targeted_player.is_lose():
                             dead_players.append(targeted_player)
+                            dead_player_cards = targeted_player.hand
+                            player.add_cards(*dead_player_cards)
+                            targeted_player.remove_cards(*dead_player_cards)
 
                             if not quiet:
                                 print(f'{player.name} has eliminated {
