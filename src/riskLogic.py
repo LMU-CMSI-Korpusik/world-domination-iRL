@@ -11,6 +11,8 @@ import torch
 
 random.seed(1234)
 
+DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
+
 
 class Board:
     pass
@@ -151,51 +153,128 @@ class Player:
 
     def get_claim(self, board: Board, free_territories: set[Territory]) -> Territory:
         """
-        TODO: document this
+        Ask the Player which Territory they would like to claim from the
+        remaining free Territories at the beginning of the game
+
+        :params:\n
+        board               --  the game Board\n
+        free_territories    --  the remaining unclaimed Territories
+
+        :returns:\n
+        claim               --  the Player's desired claim
         """
         raise NotImplementedError(
             "Cannot call get_claim from base Player class")
 
     def place_armies(self, board: Board, armies_to_place: int) -> tuple[Territory, int]:
         """
-        TODO: document this
+        Ask the Player which Territory on which they want to place their armies
+        during the placement phase
+
+        :params:\n
+        board           --  the game Board\n
+        armies_to_place --  the total number of armies the player can place
+
+        :returns:\n
+        territory       --  the Territory on which they are placing the armies
+        armies          --  the number of armies they want to place
         """
         raise NotImplementedError(
             "Cannot call place_armies on base Player class")
 
-    def attack(self, board: Board) -> tuple[Territory, Territory, int]:
+    def attack(self, board: Board) -> tuple[Territory | None, Territory, int]:
         """
-        TODO: document this
+        Ask the Player which Territory they would like to attack on their turn
+
+        :params:\n
+        board       --  the game Board
+
+        :returns:\n
+        target      --  either the Territory the Player wishes to attack or None
+        if they do not want to attack at all\n
+        base        --  the Territory the Player wishes to use to attack the
+        target\n
+        armies      --  the number of armies the Player will use for the attack
         """
         raise NotImplementedError("Cannot call attack on base Player class")
 
     def capture(self, board: Board, target: Territory, base: Territory, attacking_armies: int) -> int:
         """
-        TODO: document this
+        When the Player captures a Territory, it must move a number of armies
+        to the target from the base. It must move at least as many armies that
+        survived from the attack.
+
+        :params:\n
+        board               --  the game Board\n
+        target              --  the Territory the Player attacked\n
+        base                --  the Territory from which the Player attacked\n
+        attacking_armies    --  the number of armies the Player used to attack\n
+
+        :returns:\n
+        armies              --  the number of armies to move into the captured
+        Territory
         """
         raise NotImplementedError("Cannot call capture on base Player classs")
 
     def defend(self, board: Board, target: Territory) -> int:
         """
-        TODO: document this
+        Asks the player whether to defend a Territory with one or two armies
+
+        :params:\n
+        board       --  the game Board\n
+        target      --  the Territory which is being attacked
+
+        :returns:\n
+        armies      --  the number of armies with which to defend the Territory
         """
         raise NotImplementedError("Cannot call defend on base Player class")
 
-    def fortify(self, board: Board) -> tuple[Territory, Territory, int]:
+    def fortify(self, board: Board) -> tuple[Territory | None, Territory, int]:
         """
-        TODO: document this
+        Asks the Player which Territory they would like to fortify at the end
+        of their turn
+
+        :params:\n
+        board       --  the game Board
+
+        :returns:\n
+        destination --  the Territory to fortify, or None if the Player does
+        not want to fortify\n
+        source      --  the Territory to supply the fortifying armies\n
+        armies      --  the number of armies to fortify with
         """
         raise NotImplementedError("Cannot call fortify on base Player class")
 
-    def use_cards(self, board: Board, matches: list[Card]) -> tuple[Card, Card, Card]:
+    def use_cards(self, board: Board, matches: list[Card]) -> tuple[Card, Card, Card] | None:
         """
-        TODO: document this
+        Asks the Player which Cards they would like to turn in at the
+        beginning of their turn, if any
+
+        :params:\n
+        board       --  the game Board\n
+        matches     --  all possible matches the Player can turn in 
+
+        :returns:\n
+        cards       --  the trio of Cards to turn in or None if the Player does
+        not want to turn in any Cards. Cannot be None if the Player has 5 or 6
+        Cards in their hand.
         """
         raise NotImplementedError("Cannot call use_cards on base Player class")
 
     def choose_extra_deployment(self, board: Board, potential_territories: list[Territory]) -> Territory:
         """
-        TODO: document this
+        Asks the Player which Territory they would like to deploy extra armies
+        to in the event that they turn in a card with one of their Territories
+        on it
+
+        :params:\n
+        board                   --  the game Board\n
+        potential_territories   --  the Territories available for extra
+        deployents
+
+        :returns:\n
+        territory               --  the Territory on which the Player would
+        like to deploy extra armies
         """
         raise NotImplementedError(
             "Cannot call choose_extra_deployment on base Player class")
@@ -206,7 +285,7 @@ class Player:
         captured during play or at the beginning of the game.
 
         :params:\n
-        territory       --  a Territory
+        territory       --  a Territory\n
         territory_index --  the Territory's index in the sparse row
         """
         self.territories.update(
@@ -230,22 +309,22 @@ class Player:
 
     def add_cards(self, *cards: Card):
         """
-        Adds a Card to the player's hand, either from drawing or eliminating 
-        another player.
+        Adds one or more Cards to the player's hand, either from drawing or 
+        eliminating another player.
 
         :params:\n
-        card    --  a Card
+        cards    --  one or more Cards
         """
         for card in cards:
             self.hand.append(validate_is_type(card, Card))
 
     def remove_cards(self, *cards: Card):
         """
-        Removes a Card from a player's hand, such as when turning cards in for
-        armies.
+        Removes one or more Cards from a player's hand, such as when turning in
+        cards for armies.
 
         :params:\n
-        card    --  a Card
+        cards    --  one or more Cards
         """
         for card in cards:
             validated_card = validate_is_type(card, Card)
@@ -259,7 +338,14 @@ class Player:
     @staticmethod
     def get_valid_attack_targets(board: Board, occupied_territories: set[Territory]) -> set:
         """
-        TODO: document this
+        Gets the Territories that a Player can legally attack
+
+        :params:\n
+        board                   --  the game Board\n
+        occupied_territories    --  the Territories owned by the Player
+
+        :returns:
+        valid_targets           --  all valid attack targets for the Player
         """
         return {neighbor for territory in occupied_territories
                 for neighbor in board.territories[territory]
@@ -268,7 +354,13 @@ class Player:
     @staticmethod
     def get_valid_bases(board: Board, target: Territory, occupied_territories: set[Territory]) -> set:
         """
-        TODO: document this
+        Gets the Territories that the Player can legally use as a source for 
+        armies when fortifying a given Territory
+
+        :params:\n
+        board                   --  the game Board
+        target                  --  the destination for the fortifying armies
+        occupied_territories    --  the Territories owned by the Player
         """
         return {neighbor for neighbor in board.territories[target]
                 if neighbor in occupied_territories and board.armies[neighbor] > 2}
@@ -414,7 +506,6 @@ class Board:
         :returns\n
         state       --  The state
         """
-        # TODO: fix this abhorrent monstrosity (does it even work?)
         territories_state = torch.zeros(
             6 * len(self.territories), dtype=torch.float)
         for territory, territory_index in player.territories.items():
