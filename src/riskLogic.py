@@ -11,6 +11,8 @@ import torch
 
 random.seed(1234)
 
+DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
+
 
 class Board:
     pass
@@ -546,7 +548,7 @@ class Board:
                 case Design.ARTILLERY:
                     cards_state[artillery_offset +
                                 card_encoding_length * index] = 1.0
-        return torch.cat((territories_state, armies_state, cards_state))
+        return torch.cat((territories_state, armies_state, cards_state)).to(DEVICE)
 
 
 class Risk:
