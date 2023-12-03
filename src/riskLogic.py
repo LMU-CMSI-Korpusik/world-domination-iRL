@@ -437,9 +437,9 @@ class Risk:
         """
         A Risk game needs players, rules, and a board to play on.
 
-        :params:
-        players     --  a list of Players
-        rules       --  a Rules
+        :params:\n
+        players     --  a list of Players\n
+        rules       --  a Rules\n
         board       --  a Board
         """
         self.players = [validate_is_type(player, Player) for player in players]
@@ -450,20 +450,24 @@ class Risk:
         self.index_to_player = {index: player for index,
                                 player in enumerate(self.players)}
 
-    def tradein(self, player, quiet=True):
+    def tradein(self, player, quiet=True) -> int:
         """
         Handles the logic for players trading in cards
 
-        :params:
-        player      --  the player trading in the cards
+        :params:\n
+        player      --  the player trading in the cards\n
         quiet       --  whether game updates to console are muted
+
+        :returns:
+        card_armies --  the number of armies awarded for turning in cards
         """
         cards = player.use_cards(self.board)
+
+        card_armies = 0
 
         if cards is not None:
             card_armies = self.rules.get_armies_from_card_match(
                 self.board.matches_traded)
-            armies_awarded += card_armies
 
             extra_deployments = [
                 card.territory for card in cards if card.territory in player.territories]
@@ -485,6 +489,25 @@ class Risk:
             player.remove_cards(*cards)
 
             self.board.matches_traded += 1
+
+        return card_armies
+
+    def placement(self, player: Player, armies_awarded: int, quiet=True):
+        """
+        Handles players placing armies on their territories
+
+        :params:\n
+        player          --  the player placing the armies\n
+        armies_awarded  --  the number of armies to place
+        """
+        while armies_awarded != 0:
+            territory, armies_placed = player.place_armies(
+                self.board, armies_awarded)
+            self.board.add_armies(territory, armies_placed)
+            armies_awarded -= armies_placed
+            if not quiet:
+                print(
+                    f'{player.name} placed {armies_placed} armies on {territory.name}.')
 
     def play(self, quiet=True):
         """
@@ -558,16 +581,9 @@ class Risk:
                         armies_awarded += continent.armies_awarded
 
                 if len(player.hand) > 2:
-                    self.tradein(player, quiet)
+                    armies_awarded += self.tradein(player, quiet)
 
-                while armies_awarded != 0:
-                    territory, armies_placed = player.place_armies(
-                        self.board, armies_awarded)
-                    self.board.add_armies(territory, armies_placed)
-                    armies_awarded -= armies_placed
-                    if not quiet:
-                        print(
-                            f'{player.name} placed {armies_placed} armies on {territory.name}.')
+                self.placement(player, armies_awarded, quiet)
 
                 attacking = True
                 while attacking:
@@ -628,7 +644,9 @@ class Risk:
                             targeted_player.remove_cards(*dead_player_cards)
 
                             while len(player.hand) >= 6:
-                                self.tradein(player, quiet)
+                                armies_awarded = 0
+                                armies_awarded += self.tradein(player, quiet)
+                                self.placement(player, armies_awarded)
 
                             if not quiet:
                                 print(
