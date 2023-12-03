@@ -43,25 +43,15 @@ class RandomPlayer(Player):
         valid_attack_targets = self.get_valid_attack_targets(
             board, occupied_territories)
 
-        choosing = True
-        valid_bases = None
-        target = None
-        while choosing:
-            if len(valid_attack_targets) == 0:
-                return (None, None, None)
+        if len(valid_attack_targets) == 0:
+            return (None, None, None)
 
-            target = rng.choice(list(valid_attack_targets))
-            valid_attack_targets.remove(target)
+        target = rng.choice(list(valid_attack_targets))
 
-            valid_bases = self.get_valid_bases(
-                board, target, occupied_territories)
-
-            if len(valid_bases) != 0:
-                choosing = False
+        valid_bases = self.get_valid_bases(
+            board, target, occupied_territories)
 
         base = rng.choice(list(valid_bases))
-
-        attacking_armies = None
 
         attacking_armies = rng.integers(
             1, min(board.armies[base] - 1, 3), endpoint=True)
@@ -73,7 +63,7 @@ class RandomPlayer(Player):
             return attacking_armies
         return int(rng.integers(attacking_armies, board.armies[base]))
 
-    def defend(self, board_state: Board, target: Territory) -> int:
+    def defend(self, board_state: Board, target: Territory, attacking_armies: int) -> int:
         if board_state.armies[target] == 1:
             return 1
         else:
@@ -86,24 +76,16 @@ class RandomPlayer(Player):
             return (None, None, None)
 
         occupied_territories = set(list(self.territories))
-        possible_destinations = [
-            territory for territory in occupied_territories]
+        possible_destinations = [territory for territory, neighbors in board.territories.items()
+                                 if territory in self.territories
+                                 and len([neighbor for neighbor in neighbors if neighbor in self.territories and board.armies[neighbor] > 1]) != 0]
 
-        choosing = True
-        valid_sources = None
-        destination = None
-        while choosing:
-            if len(possible_destinations) == 0:
-                return (None, None, None)
+        if len(possible_destinations) == 0:
+            return (None, None, None)
 
-            destination = rng.choice(possible_destinations)
-            possible_destinations.remove(destination)
-
-            valid_sources = self.get_valid_bases(
-                board, destination, occupied_territories)
-
-            if len(valid_sources) != 0:
-                choosing = False
+        destination = rng.choice(possible_destinations)
+        valid_sources = self.get_valid_bases(
+            board, destination, occupied_territories)
 
         source = rng.choice(list(valid_sources))
 
@@ -151,7 +133,8 @@ class RiskPlayer(Player):
         self.hand = list()
 
     def get_claim(self, board: Board, free_territories: set[Territory]) -> Territory:
-        state = board.get_state_for_player(self)
+        state = board.get_state_for_player(
+            self, Action.CLAIM, 0, *free_territories)
         valid_selections = self.get_territories_mask(board, free_territories)
         claim_index = np.argmax(
             self.net(state, Action.CLAIM, valid_selections))
@@ -160,7 +143,7 @@ class RiskPlayer(Player):
         return claim
 
     def place_armies(self, board: Board, armies_to_place: int) -> tuple[Territory, int]:
-        state = board.get_state_for_player(self)
+        state = board.get_state_for_player(self, Action.PLACE, armies_to_place)
         valid_selections = self.get_territories_mask(
             board, list(self.territories.keys()))
         territory_activations, armies_proportion = self.net(
@@ -171,11 +154,13 @@ class RiskPlayer(Player):
         return territory, int(np.round(armies_proportion * armies_to_place))
 
     def attack(self, board: Board) -> tuple[Territory | None, Territory, int]:
-        state = board.get_state_for_player(self)
+        pre_selection_state = board.get_state_for_player(
+            self, Action.CHOOSE_ATTACK_TARGET)
         valid_selections = self.get_territories_mask(
             board, self.get_valid_attack_targets(board, list(self.territories.keys())))
+
         target_index = np.argmax(
-            self.net(state, Action.CHOOSE_ATTTACK_TARGET, valid_selections))
+            self.net(pre_selection_state, Action.CHOOSE_ATTACK_TARGET, valid_selections))
 
         if target_index == len(board.territories):
             return None, None, None
@@ -184,14 +169,87 @@ class RiskPlayer(Player):
 
         valid_selections = self.get_territories_mask(
             board, [territory for territory in board.territories[target] if territory in self.territories])
+        post_selection_state = board.get_state_for_player(
+            self, Action.CHOOSE_ATTACK_BASE, 0, target)
         base_activations, armies_activations = self.net(
-            state, Action.CHOOSE_ATTACK_BASE, valid_selections)
+            post_selection_state, Action.CHOOSE_ATTACK_BASE, valid_selections)
         base = self.get_territory_from_index(np.argmax(base_activations))
 
         armies_mask = torch.tensor([1.0 if board.armies[base] > potential_armies else 0.0 for potential_armies in [
-                                   1, 2, 3]], dtype=torch.float).to(DEVICE)
+                                   1, 2, 3]], dtype=torch.double).to(DEVICE)
         armies = np.argmax(armies_mask * armies_activations) + 1
         return target, base, armies
 
     def capture(self, board: Board, target: Territory, base: Territory, attacking_armies: int) -> int:
-        pass
+        state = board.get_state_for_player(
+            self, Action.CAPTURE, attacking_armies, target, base)
+
+        return int(attacking_armies + np.round(self.net(state, Action.CAPTURE) * (board.armies[base] - attacking_armies)))
+
+    def defend(self, board: Board, target: Territory, attacking_armies: int) -> int:
+        state = board.get_state_for_player(
+            self, Action.DEFEND, attacking_armies, target)
+
+        if board.armies[target] == 1:
+            return 1
+
+        defend_activation = self.net(state, Action.DEFEND)
+
+        if defend_activation > 0.5:
+            return 2
+        else:
+            return 1
+
+    def fortify(self, board: Board) -> tuple[Territory | None, Territory, int]:
+        pre_selection_state = board.get_state_for_player(
+            self, Action.CHOOSE_FORTIFY_TARGET)
+
+        valid_destinations = [territory for territory, neighbors in board.territories.items()
+                              if territory in self.territories
+                              and len([neighbor for neighbor in neighbors if neighbor in self.territories and board.armies[neighbor] > 1]) != 0]
+
+        valid_selections = self.get_territories_mask(
+            board, valid_destinations)
+
+        destination_index = np.argmax(self.net(
+            pre_selection_state, Action.CHOOSE_FORTIFY_TARGET, 0, valid_selections))
+
+        if destination_index == len(board.territories):
+            return None, None, None
+
+        destination = self.get_territory_from_index(board, destination_index)
+
+        post_selection_state = board.get_state_for_player(
+            self, Action.CHOOSE_FORTIFY_SOURCE, 0, destination)
+
+        valid_sources = self.get_territories_mask(board, self.get_valid_bases(
+            board, destination, set(list(self.territories.keys()))))
+
+        source_index, armies_proportion = self.net(
+            post_selection_state, Action.CHOOSE_FORTIFY_SOURCE, valid_sources)
+
+        source = self.get_territory_from_index(board, source_index)
+        armies = int(np.floor(armies_proportion *
+                     (board.armies[source] - 1)) + 1)
+
+        return destination, source, armies
+
+    def use_cards(self, board: Board, matches: list[Card]) -> tuple[Card, Card, Card] | None:
+        state = board.get_state_for_player(self, Action.CARDS)
+        valid_cards = [1 if i < len(self.hand) else 0 for i in range(9)]
+        if len(self.hand < 5):
+            valid_cards[8] = 1
+
+        card_choice = np.argmax(self.net(state, Action.CARDS, valid_cards))
+        if card_choice == 8:
+            return None
+
+        return matches[card_choice]
+
+    def choose_extra_deployment(self, board: Board, potential_territories: list[Territory]) -> Territory:
+        state = board.get_state_for_player(self, Action.PLACE, 2)
+        valid_selections = self.get_territories_mask(
+            board, potential_territories)
+        territory_activations, _ = self.net(
+            state, Action.PLACE, valid_selections)
+        return self.get_territory_from_index(board, self.get_territory_from_index(np.argmax(territory_activations)))
