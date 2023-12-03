@@ -223,8 +223,8 @@ class Board:
         validate_is_type(territory, Territory)
         validate(None, territory in self.territories,
                  'Cannot claim a nonexistent territory', ValueError)
-        validate(None, self.armies[territory] == 0, f'Territory {
-                 territory.name} has already been claimed', ValueError)
+        validate(None, self.armies[territory] == 0,
+                 f'Territory {territory.name} has already been claimed', ValueError)
         self.armies[territory] = 1
         self.territory_owners[territory] = player
 
@@ -354,8 +354,7 @@ class Rules:
         """
         if n_players < 1:
             raise ValueError(
-                f'Please tell me how playing Risk with {
-                    n_players} players is mathematically possible.'
+                f'Please tell me how playing Risk with {n_players} players is mathematically possible.'
             )
         if n_players == 1:
             raise ValueError("You cannot play Risk by yourself.")
@@ -540,12 +539,11 @@ class Risk:
                                 self.board, extra_deployments)
 
                             self.board.add_armies(extra_armies_territory, 2)
-                            extra_deployment_message = f', plus two extra armies on {
-                                extra_armies_territory.name}'
+                            extra_deployment_message = f', plus two extra armies on {extra_armies_territory.name}'
 
                         if not quiet:
-                            print(f'{player.name} traded in three cards for {
-                                  card_armies} armies' + extra_deployment_message)
+                            print(
+                                f'{player.name} traded in three cards for {card_armies} armies' + extra_deployment_message)
 
                         self.board.return_and_shuffle(*cards)
                         player.remove_cards(*cards)
@@ -558,8 +556,8 @@ class Risk:
                     self.board.add_armies(territory, armies_placed)
                     armies_awarded -= armies_placed
                     if not quiet:
-                        print(f'{player.name} placed {
-                              armies_placed} armies on {territory.name}.')
+                        print(
+                            f'{player.name} placed {armies_placed} armies on {territory.name}.')
 
                 attacking = True
                 while attacking:
@@ -572,8 +570,8 @@ class Risk:
                         self.board, target)
 
                     if not quiet:
-                        print(f'{player.name} attacks {target.name} ({self.board.armies[target]} armies) from {base.name} ({self.board.armies[base]} armies) with {
-                              armies_to_attack} armies. {targeted_player.name} defends with {armies_to_defend} armies.')
+                        print(
+                            f'{player.name} attacks {target.name} ({self.board.armies[target]} armies) from {base.name} ({self.board.armies[base]} armies) with {armies_to_attack} armies. {targeted_player.name} defends with {armies_to_defend} armies.')
 
                     attacker_rolls = [random.randint(1, 6)
                                       for i in range(armies_to_attack)]
@@ -581,8 +579,8 @@ class Risk:
                                       for i in range(armies_to_defend)]
 
                     if not quiet:
-                        print(f'{player.name} rolls: {attacker_rolls}; {
-                              targeted_player.name} rolls: {defender_rolls}')
+                        print(
+                            f'{player.name} rolls: {attacker_rolls}; {targeted_player.name} rolls: {defender_rolls}')
 
                     attacker_losses, defender_losses = self.rules.resolve_attack(
                         attacker_rolls, defender_rolls)
@@ -590,8 +588,8 @@ class Risk:
                     self.board.add_armies(target, -defender_losses)
 
                     if not quiet:
-                        print(f'attacker losses: {attacker_losses}; defender losses: {defender_losses}\n{base.name} now has {
-                              self.board.armies[base]} armies; {target.name} now has {self.board.armies[target]} armies.')
+                        print(
+                            f'attacker losses: {attacker_losses}; defender losses: {defender_losses}\n{base.name} now has {self.board.armies[base]} armies; {target.name} now has {self.board.armies[target]} armies.')
 
                     if self.board.armies[target] == 0:
                         armies_moved = player.capture(
@@ -607,11 +605,11 @@ class Risk:
                             earned_card = True
 
                         if not quiet:
-                            print(f'{player.name} has captured {target.name}. {target.name} now has {
-                                  armies_moved} armies. {base.name} now has {self.board.armies[base]} armies.')
+                            print(
+                                f'{player.name} has captured {target.name}. {target.name} now has {armies_moved} armies. {base.name} now has {self.board.armies[base]} armies.')
                         elif self.board.armies[target] < 0:
-                            raise RuntimeError(f'Attack by {
-                                player.name} resulted in negative number of armies on {target.name}')
+                            raise RuntimeError(
+                                f'Attack by {player.name} resulted in negative number of armies on {target.name}')
 
                         if targeted_player.is_lose():
                             dead_players.append(targeted_player)
@@ -620,8 +618,8 @@ class Risk:
                             targeted_player.remove_cards(*dead_player_cards)
 
                             if not quiet:
-                                print(f'{player.name} has eliminated {
-                                      targeted_player.name}!')
+                                print(
+                                    f'{player.name} has eliminated {targeted_player.name}!')
 
                         if self.board.is_win(player):
                             gaming = False
@@ -643,8 +641,8 @@ class Risk:
                     self.board.add_armies(source, -armies)
 
                     if not quiet:
-                        print(f'{player.name} has fortified {destination.name} with {
-                              armies} armies from {source.name}.')
+                        print(
+                            f'{player.name} has fortified {destination.name} with {armies} armies from {source.name}.')
                 elif not quiet and destination is None:
                     print(f'{player.name} chose not to fortify.')
 
