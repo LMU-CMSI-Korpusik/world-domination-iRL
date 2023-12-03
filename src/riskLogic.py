@@ -176,7 +176,7 @@ class Player:
         armies_to_place --  the total number of armies the player can place
 
         :returns:\n
-        territory       --  the Territory on which they are placing the armies
+        territory       --  the Territory on which they are placing the armies\n
         armies          --  the number of armies they want to place
         """
         raise NotImplementedError(
@@ -497,6 +497,7 @@ class Board:
         self.matches_traded = 0
 
     def get_state_for_player(self, player: Player):
+        # TODO: add encodings for territory attacked, fortification target, territory to defend
         """
         Returns the state from the view of the supplied player
 
