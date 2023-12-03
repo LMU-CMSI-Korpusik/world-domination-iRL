@@ -23,7 +23,7 @@ class Action(Enum):
     """
     Actions that a player can take.
     """
-    CHOOSE_ATTTACK_TARGET = "target"
+    CHOOSE_ATTACK_TARGET = "target"
     CHOOSE_ATTACK_BASE = "base"
     DEFEND = "defend"
     CLAIM = "claim"
