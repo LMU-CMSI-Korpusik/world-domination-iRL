@@ -5,11 +5,15 @@ Author: Kieran Ahn
 Date: 11/27/2023
 """
 from validators import *
-from riskGame import Card, Territory
+from riskGame import Card, Territory, Action
 from riskLogic import Board, Player
+from riskNet import RiskNet
 import numpy as np
+import torch
 
 rng = np.random.default_rng()
+
+DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 
 class RandomPlayer(Player):
@@ -127,4 +131,67 @@ class RiskPlayer(Player):
     """
     # if more than 4 cards in hand, mask the None option for tradein to 0
 
-    pass
+    @staticmethod
+    def get_territories_mask(board: Board, valid_territories: list[Territory] | set[Territory]) -> list[int]:
+        mask = [0 for _ in len(board.territories)]
+        for territory in valid_territories:
+            mask[board.territory_to_index[territory]] = 1
+        return mask
+
+    @staticmethod
+    def get_territory_from_index(board: Board, territory_index: int) -> Territory:
+        for territory, index in board.territory_to_index:
+            if territory_index == index:
+                return territory
+
+    def __init__(self, name: str, net: RiskNet):
+        self.name = name
+        self.net = net
+        self.territories = dict()
+        self.hand = list()
+
+    def get_claim(self, board: Board, free_territories: set[Territory]) -> Territory:
+        state = board.get_state_for_player(self)
+        valid_selections = self.get_territories_mask(board, free_territories)
+        claim_index = np.argmax(
+            self.net(state, Action.CLAIM, valid_selections))
+        claim = self.get_territory_from_index(board, claim_index)
+
+        return claim
+
+    def place_armies(self, board: Board, armies_to_place: int) -> tuple[Territory, int]:
+        state = board.get_state_for_player(self)
+        valid_selections = self.get_territories_mask(
+            board, list(self.territories.keys()))
+        territory_activations, armies_proportion = self.net(
+            state, Action.PLACE, valid_selections)
+        territory = self.get_territory_from_index(
+            board, np.argmax(territory_activations))
+
+        return territory, int(np.round(armies_proportion * armies_to_place))
+
+    def attack(self, board: Board) -> tuple[Territory | None, Territory, int]:
+        state = board.get_state_for_player(self)
+        valid_selections = self.get_territories_mask(
+            board, self.get_valid_attack_targets(board, list(self.territories.keys())))
+        target_index = np.argmax(
+            self.net(state, Action.CHOOSE_ATTTACK_TARGET, valid_selections))
+
+        if target_index == len(board.territories):
+            return None, None, None
+
+        target = self.get_territory_from_index(board, target_index)
+
+        valid_selections = self.get_territories_mask(
+            board, [territory for territory in board.territories[target] if territory in self.territories])
+        base_activations, armies_activations = self.net(
+            state, Action.CHOOSE_ATTACK_BASE, valid_selections)
+        base = self.get_territory_from_index(np.argmax(base_activations))
+
+        armies_mask = torch.tensor([1.0 if board.armies[base] > potential_armies else 0.0 for potential_armies in [
+                                   1, 2, 3]], dtype=torch.float).to(DEVICE)
+        armies = np.argmax(armies_mask * armies_activations) + 1
+        return target, base, armies
+
+    def capture(self, board: Board, target: Territory, base: Territory, attacking_armies: int) -> int:
+        pass
