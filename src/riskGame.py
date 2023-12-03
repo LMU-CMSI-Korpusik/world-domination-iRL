@@ -29,7 +29,6 @@ class Action(Enum):
     CLAIM = "claim"
     CAPTURE = "capture"
     PLACE = "place"
-    FORTIFY = "fortify"
     CARDS = "cards"
     CHOOSE_FORTIFY_SOURCE = "source"
     CHOOSE_FORTIFY_TARGET = "destination"
