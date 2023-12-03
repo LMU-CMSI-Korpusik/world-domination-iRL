@@ -21,4 +21,13 @@ players.append(RandomPlayer('sus'))
 board = ClassicBoard(players)
 game = Risk(players, Rules(), board)
 game.play(quiet=False)
+print(f'\n\nstate of {players[0].name}:')
+print(board.get_state_for_player(players[0]))
+
+print(f'\n\nstate of {players[1].name}:')
+print(board.get_state_for_player(players[1]))
+
+print(f'\n\nstate of {players[2].name}:')
+print(board.get_state_for_player(players[2]))
+
 board.reset()
