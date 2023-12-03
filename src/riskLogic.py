@@ -7,6 +7,7 @@ Date: 11/23/2023
 from riskGame import *
 import random
 from dataclasses import dataclass, field
+import torch
 
 random.seed(1234)
 
@@ -398,7 +399,65 @@ class Board:
             player_cards = player.hand
             self.return_and_shuffle(*player_cards)
             player.remove_cards(*player_cards)
+            player_territories = list(player.territories.keys())
+            for territory in player_territories:
+                player.remove_territory(territory)
         self.matches_traded = 0
+
+    def get_state_for_player(self, player: Player):
+        """
+        Returns the state from the view of the supplied player
+
+        :params:\n
+        player:     --  The player for which the state is being generated
+
+        :returns\n
+        state       --  The state
+        """
+        # TODO: fix this abhorrent monstrosity (does it even work?)
+        territories_state = torch.zeros(
+            6 * len(self.territories), dtype=torch.float)
+        for territory, territory_index in player.territories.items():
+            territories_state[territory_index] = 1.0
+
+        other_player_index = 1
+        for index, other_player in enumerate(self.players):
+            if other_player is player:
+                continue
+            for territory, territory_index in other_player.territories.items():
+                territories_state[territory_index +
+                                  len(self.territories) * other_player_index] = 1.0
+            other_player_index += 1
+
+        armies_state = torch.zeros(len(self.territories), dtype=torch.float)
+        for territory, armies in self.armies.items():
+            armies_state[self.territory_to_index[territory]] = float(armies)
+
+        # each card has a territory, a design, and a wildcard status, and you can have at most 8 cards
+        card_encoding_length = len(self.territories) + 4
+        infantry_offset = card_encoding_length + 1
+        cavalry_offset = card_encoding_length + 2
+        artillery_offset = card_encoding_length + 3
+        wildcard_offset = card_encoding_length + 4
+        cards_state = torch.zeros(card_encoding_length * 8)
+        for index, card in enumerate(player.hand):
+            if card.wildcard:
+                cards_state[wildcard_offset +
+                            card_encoding_length * index] = 1.0
+                continue
+            cards_state[self.territory_to_index[card.territory] +
+                        card_encoding_length * index] = 1.0
+            match(card.design):
+                case Design.INFANTRY:
+                    cards_state[infantry_offset +
+                                card_encoding_length * index] = 1.0
+                case Design.CAVALRY:
+                    cards_state[cavalry_offset +
+                                card_encoding_length * index] = 1.0
+                case Design.ARTILLERY:
+                    cards_state[artillery_offset +
+                                card_encoding_length * index] = 1.0
+        return torch.cat((territories_state, armies_state, cards_state))
 
 
 class Risk:
@@ -463,7 +522,7 @@ class Risk:
             self.board.return_and_shuffle(*cards)
             player.remove_cards(*cards)
 
-            self.board.matches_traded += 1
+            # self.board.matches_traded += 1
 
         return card_armies
 
@@ -513,7 +572,7 @@ class Risk:
 
         self.fix_player_order(player_order, last_player)
 
-        while all([armies > 0 for armies in starting_armies.values()]):
+        while any([armies > 0 for armies in starting_armies.values()]):
             for player_index in player_order:
                 player = self.index_to_player[player_index]
                 if starting_armies[player_index] == 0:
