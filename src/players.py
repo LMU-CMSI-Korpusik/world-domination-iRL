@@ -4,12 +4,160 @@ Different types of Players that can play in Risk
 Author: Kieran Ahn
 Date: 11/27/2023
 """
-
+from validators import *
+from dataclasses import dataclass, field
 from riskGame import Card, Territory
-from riskLogic import Board, Player, Rules
+from riskLogic import Rules
+from boards import Board
 import numpy as np
 
 rng = np.random.default_rng()
+
+
+@dataclass
+class Player:
+    """
+    An agent who will play Risk. Interface to be implemented.
+
+    :fields:\n
+    name        --  the Player's name\n
+    territories --  a dict of the Territories owned by the player and their
+    corresponding indices in the sparse row\n
+    hand        --  the Player's hand of Cards
+    """
+    name: str
+    territories: dict[Territory, int] = field(default_factory=dict)
+    hand: list[Card] = field(default_factory=list)
+
+    def get_claim(self, board: Board, free_territories: set[Territory]) -> Territory:
+        """
+        TODO: document this
+        """
+        raise NotImplementedError(
+            "Cannot call get_claim from base Player class")
+
+    def place_armies(self, board: Board, armies_to_place: int) -> tuple[Territory, int]:
+        """
+        TODO: document this
+        """
+        raise NotImplementedError(
+            "Cannot call place_armies on base Player class")
+
+    def attack(self, board: Board) -> tuple[Territory, Territory, int]:
+        """
+        TODO: document this
+        """
+        raise NotImplementedError("Cannot call attack on base Player class")
+
+    def capture(self, board: Board, target: Territory, base: Territory, attacking_armies: int) -> int:
+        """
+        TODO: document this
+        """
+        raise NotImplementedError("Cannot call capture on base Player classs")
+
+    def defend(self, board: Board, target: Territory) -> int:
+        """
+        TODO: document this
+        """
+        raise NotImplementedError("Cannot call defend on base Player class")
+
+    def fortify(self, board: Board) -> tuple[Territory, Territory, int]:
+        """
+        TODO: document this
+        """
+        raise NotImplementedError("Cannot call fortify on base Player class")
+
+    def use_cards(self, board: Board) -> tuple[Card, Card, Card]:
+        """
+        TODO: document this
+        """
+        raise NotImplementedError("Cannot call use_cards on base Player class")
+
+    def choose_extra_deployment(self, board: Board, potential_territories: list[Territory]) -> Territory:
+        """
+        TODO: document this
+        """
+        raise NotImplementedError(
+            "Cannot call choose_extra_deployment on base Player class")
+
+    def add_territory(self, territory: Territory, territory_index: int):
+        """
+        Adds a Territory to the player's Territories, for when a territory is
+        captured during play or at the beginning of the game.
+
+        :params:\n
+        territory       --  a Territory
+        territory_index --  the Territory's index in the sparse row
+        """
+        self.territories.update(
+            {validate_is_type(territory, Territory): territory_index})
+
+    def remove_territory(self, territory: Territory):
+        """
+        Removes a Territory from the players Territories, i.e., when it is 
+        captured.
+
+        :params:\n
+        territory   --  a Territory
+        """
+        validated_territory = validate_is_type(territory, Territory)
+        if validated_territory in self.territories:
+            del self.territories[validated_territory]
+        else:
+            raise ValueError(
+                f'Player {self.name} does not own {validated_territory.name}'
+            )
+
+    def add_cards(self, *cards: Card):
+        """
+        Adds a Card to the player's hand, either from drawing or eliminating 
+        another player.
+
+        :params:\n
+        card    --  a Card
+        """
+        for card in cards:
+            self.hand.append(validate_is_type(card, Card))
+
+    def remove_cards(self, *cards: Card):
+        """
+        Removes a Card from a player's hand, such as when turning cards in for
+        armies.
+
+        :params:\n
+        card    --  a Card
+        """
+        for card in cards:
+            validated_card = validate_is_type(card, Card)
+            if validated_card in self.hand:
+                self.hand.remove(validated_card)
+            else:
+                raise ValueError(
+                    f'Player {self.name} does not have card {card} in their hand.'
+                )
+
+    @staticmethod
+    def get_valid_attack_targets(board: Board, occupied_territories: set[Territory]) -> set:
+        """
+        TODO: document this
+        """
+        return {neighbor for territory in occupied_territories
+                for neighbor in board.territories[territory]
+                if neighbor not in occupied_territories}
+
+    @staticmethod
+    def get_valid_bases(board: Board, target: Territory, occupied_territories: set[Territory]) -> set:
+        """
+        TODO: document this
+        """
+        return {neighbor for neighbor in board.territories[target]
+                if neighbor in occupied_territories and board.armies[neighbor] > 2}
+
+    def occupied_territories(self):
+        return len(self.territories)
+
+    def is_lose(self):
+        return self.occupied_territories() == 0
 
 
 class RandomPlayer(Player):
@@ -126,5 +274,6 @@ class RiskPlayer(Player):
     """
     A player that implements RiskNet for decisionmaking.
     """
+    # if more than 4 cards in hand, mask the None option for tradein to 0
 
     pass
