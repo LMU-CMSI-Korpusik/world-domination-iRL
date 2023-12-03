@@ -110,7 +110,7 @@ class Player:
                 f'Player {self.name} does not own {validated_territory.name}'
             )
 
-    def add_card(self, card: Card):
+    def add_cards(self, *cards: Card):
         """
         Adds a Card to the player's hand, either from drawing or eliminating 
         another player.
@@ -118,9 +118,10 @@ class Player:
         :params:\n
         card    --  a Card
         """
-        self.hand.append(validate_is_type(card, Card))
+        for card in cards:
+            self.hand.append(validate_is_type(card, Card))
 
-    def remove_card(self, card: Card):
+    def remove_cards(self, *cards: Card):
         """
         Removes a Card from a player's hand, such as when turning cards in for
         armies.
@@ -128,13 +129,14 @@ class Player:
         :params:\n
         card    --  a Card
         """
-        validated_card = validate_is_type(card, Card)
-        if validated_card in self.hand:
-            self.hand.remove(validated_card)
-        else:
-            raise ValueError(
-                f'Player {self.name} does not have card {card} in their hand.'
-            )
+        for card in cards:
+            validated_card = validate_is_type(card, Card)
+            if validated_card in self.hand:
+                self.hand.remove(validated_card)
+            else:
+                raise ValueError(
+                    f'Player {self.name} does not have card {card} in their hand.'
+                )
 
     @staticmethod
     def get_valid_attack_targets(board: Board, occupied_territories: set[Territory]) -> set:
@@ -601,7 +603,6 @@ class Risk:
 
                         if not earned_card:
                             earned_card = True
-                            player.add_card(self.board.draw())
 
                         if not quiet:
                             print(f'{player.name} has captured {target.name}. {target.name} now has {
@@ -629,7 +630,7 @@ class Risk:
                     break
 
                 if earned_card:
-                    player.add_card(self.board.draw())
+                    player.add_cards(self.board.draw())
 
                 destination, source, armies = player.fortify(self.board)
                 if destination is not None:
