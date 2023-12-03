@@ -450,6 +450,42 @@ class Risk:
         self.index_to_player = {index: player for index,
                                 player in enumerate(self.players)}
 
+    def tradein(self, player, quiet=True):
+        """
+        Handles the logic for players trading in cards
+
+        :params:
+        player      --  the player trading in the cards
+        quiet       --  whether game updates to console are muted
+        """
+        cards = player.use_cards(self.board)
+
+        if cards is not None:
+            card_armies = self.rules.get_armies_from_card_match(
+                self.board.matches_traded)
+            armies_awarded += card_armies
+
+            extra_deployments = [
+                card.territory for card in cards if card.territory in player.territories]
+
+            extra_deployment_message = '.'
+
+            if len(extra_deployments) != 0:
+                extra_armies_territory = player.choose_extra_deployment(
+                    self.board, extra_deployments)
+
+                self.board.add_armies(extra_armies_territory, 2)
+                extra_deployment_message = f', plus two extra armies on {extra_armies_territory.name}'
+
+            if not quiet:
+                print(
+                    f'{player.name} traded in three cards for {card_armies} armies' + extra_deployment_message)
+
+            self.board.return_and_shuffle(*cards)
+            player.remove_cards(*cards)
+
+            self.board.matches_traded += 1
+
     def play(self, quiet=True):
         """
         TODO: document this
@@ -522,33 +558,7 @@ class Risk:
                         armies_awarded += continent.armies_awarded
 
                 if len(player.hand) > 2:
-                    cards = player.use_cards(self.board)
-
-                    if cards is not None:
-                        card_armies = self.rules.get_armies_from_card_match(
-                            self.board.matches_traded)
-                        armies_awarded += card_armies
-
-                        extra_deployments = [
-                            card.territory for card in cards if card.territory in player.territories]
-
-                        extra_deployment_message = '.'
-
-                        if len(extra_deployments) != 0:
-                            extra_armies_territory = player.choose_extra_deployment(
-                                self.board, extra_deployments)
-
-                            self.board.add_armies(extra_armies_territory, 2)
-                            extra_deployment_message = f', plus two extra armies on {extra_armies_territory.name}'
-
-                        if not quiet:
-                            print(
-                                f'{player.name} traded in three cards for {card_armies} armies' + extra_deployment_message)
-
-                        self.board.return_and_shuffle(*cards)
-                        player.remove_cards(*cards)
-
-                        self.board.matches_traded += 1
+                    self.tradein(player, quiet)
 
                 while armies_awarded != 0:
                     territory, armies_placed = player.place_armies(
@@ -616,6 +626,9 @@ class Risk:
                             dead_player_cards = targeted_player.hand
                             player.add_cards(*dead_player_cards)
                             targeted_player.remove_cards(*dead_player_cards)
+
+                            while len(player.hand) >= 6:
+                                self.tradein(player, quiet)
 
                             if not quiet:
                                 print(
