@@ -186,7 +186,7 @@ class RiskPlayer(Player):
         state = board.get_state_for_player(
             self, Action.CAPTURE, attacking_armies, target, base)
 
-        return int(attacking_armies + torch.round(self.net(state, Action.CAPTURE) * (board.armies[base] - attacking_armies)).item())
+        return int(attacking_armies + torch.floor(self.net(state, Action.CAPTURE) * (board.armies[base] - attacking_armies - 1)).item())
 
     def defend(self, board: Board, target: Territory, attacking_armies: int) -> int:
         state = board.get_state_for_player(
@@ -234,21 +234,27 @@ class RiskPlayer(Player):
 
         source = self.get_territory_from_index(
             board, int(torch.argmax(source_index).item()))
-        armies = int(torch.floor(armies_proportion *
-                     (board.armies[source] - 1)).item())
+        armies = int(torch.floor(1 + armies_proportion *
+                     (board.armies[source] - 2)).item())
 
         return destination, source, armies
 
     def use_cards(self, board: Board, matches: list[Card]) -> tuple[Card, Card, Card] | None:
         # TODO: fix this to use proportions
         state = board.get_state_for_player(self, Action.CARDS)
-        valid_cards = [1 if i < len(matches) else 0 for i in range(10)]
-        if len(self.hand) < 5:
-            valid_cards[9] = 1
 
-        card_choice = int(torch.argmax(
-            self.net(state, Action.CARDS, valid_cards)).item())
-        if card_choice == 9:
+        card_proportion = self.net(state, Action.CAPTURE)
+
+        card_choice = None
+
+        if len(self.hand) < 5:
+            card_choice = int(torch.floor(
+                card_proportion * len(matches)).item())
+        else:
+            card_choice = int(torch.floor(
+                card_proportion * (len(matches) - 1)).item())
+
+        if card_choice == len(matches):
             return None
 
         return matches[card_choice]
