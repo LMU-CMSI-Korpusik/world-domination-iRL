@@ -115,14 +115,14 @@ class RiskPlayer(Player):
 
     @staticmethod
     def get_territories_mask(board: Board, valid_territories: list[Territory] | set[Territory]) -> list[int]:
-        mask = [0 for _ in len(board.territories)]
+        mask = [0 for _ in range(len(board.territories))]
         for territory in valid_territories:
             mask[board.territory_to_index[territory]] = 1
         return mask
 
     @staticmethod
     def get_territory_from_index(board: Board, territory_index: int) -> Territory:
-        for territory, index in board.territory_to_index:
+        for territory, index in board.territory_to_index.items():
             if territory_index == index:
                 return territory
 
@@ -136,8 +136,8 @@ class RiskPlayer(Player):
         state = board.get_state_for_player(
             self, Action.CLAIM, 0, *free_territories)
         valid_selections = self.get_territories_mask(board, free_territories)
-        claim_index = np.argmax(
-            self.net(state, Action.CLAIM, valid_selections))
+        claim_index = int(torch.argmax(
+            self.net(state, Action.CLAIM, valid_selections)).item())
         claim = self.get_territory_from_index(board, claim_index)
 
         return claim
@@ -149,18 +149,19 @@ class RiskPlayer(Player):
         territory_activations, armies_proportion = self.net(
             state, Action.PLACE, valid_selections)
         territory = self.get_territory_from_index(
-            board, np.argmax(territory_activations))
+            board, int(torch.argmax(territory_activations).item()))
 
-        return territory, int(np.round(armies_proportion * armies_to_place))
+        return territory, int(torch.floor(armies_proportion * (armies_to_place - 1)).item() + 1)
 
     def attack(self, board: Board) -> tuple[Territory | None, Territory, int]:
         pre_selection_state = board.get_state_for_player(
             self, Action.CHOOSE_ATTACK_TARGET)
         valid_selections = self.get_territories_mask(
             board, self.get_valid_attack_targets(board, list(self.territories.keys())))
+        valid_selections.append(1)
 
-        target_index = np.argmax(
-            self.net(pre_selection_state, Action.CHOOSE_ATTACK_TARGET, valid_selections))
+        target_index = int(torch.argmax(
+            self.net(pre_selection_state, Action.CHOOSE_ATTACK_TARGET, valid_selections)).item())
 
         if target_index == len(board.territories):
             return None, None, None
@@ -168,23 +169,24 @@ class RiskPlayer(Player):
         target = self.get_territory_from_index(board, target_index)
 
         valid_selections = self.get_territories_mask(
-            board, [territory for territory in board.territories[target] if territory in self.territories])
+            board, [territory for territory in board.territories[target] if territory in self.territories and board.armies[territory] > 1])
         post_selection_state = board.get_state_for_player(
             self, Action.CHOOSE_ATTACK_BASE, 0, target)
         base_activations, armies_activations = self.net(
             post_selection_state, Action.CHOOSE_ATTACK_BASE, valid_selections)
-        base = self.get_territory_from_index(np.argmax(base_activations))
+        base = self.get_territory_from_index(
+            board, int(torch.argmax(base_activations).item()))
 
         armies_mask = torch.tensor([1.0 if board.armies[base] > potential_armies else 0.0 for potential_armies in [
-                                   1, 2, 3]], dtype=torch.double).to(DEVICE)
-        armies = np.argmax(armies_mask * armies_activations) + 1
+                                   1, 2, 3]], dtype=torch.float).to(DEVICE)
+        armies = int(torch.argmax(armies_mask * armies_activations).item()) + 1
         return target, base, armies
 
     def capture(self, board: Board, target: Territory, base: Territory, attacking_armies: int) -> int:
         state = board.get_state_for_player(
             self, Action.CAPTURE, attacking_armies, target, base)
 
-        return int(attacking_armies + np.round(self.net(state, Action.CAPTURE) * (board.armies[base] - attacking_armies)))
+        return int(attacking_armies + torch.round(self.net(state, Action.CAPTURE) * (board.armies[base] - attacking_armies)).item())
 
     def defend(self, board: Board, target: Territory, attacking_armies: int) -> int:
         state = board.get_state_for_player(
@@ -211,8 +213,10 @@ class RiskPlayer(Player):
         valid_selections = self.get_territories_mask(
             board, valid_destinations)
 
-        destination_index = np.argmax(self.net(
-            pre_selection_state, Action.CHOOSE_FORTIFY_TARGET, 0, valid_selections))
+        valid_selections.append(1)
+
+        destination_index = int(torch.argmax(self.net(
+            pre_selection_state, Action.CHOOSE_FORTIFY_TARGET, valid_selections)).item())
 
         if destination_index == len(board.territories):
             return None, None, None
@@ -228,20 +232,23 @@ class RiskPlayer(Player):
         source_index, armies_proportion = self.net(
             post_selection_state, Action.CHOOSE_FORTIFY_SOURCE, valid_sources)
 
-        source = self.get_territory_from_index(board, source_index)
-        armies = int(np.floor(armies_proportion *
-                     (board.armies[source] - 1)) + 1)
+        source = self.get_territory_from_index(
+            board, int(torch.argmax(source_index).item()))
+        armies = int(torch.floor(armies_proportion *
+                     (board.armies[source] - 1)).item())
 
         return destination, source, armies
 
     def use_cards(self, board: Board, matches: list[Card]) -> tuple[Card, Card, Card] | None:
+        # TODO: fix this to use proportions
         state = board.get_state_for_player(self, Action.CARDS)
-        valid_cards = [1 if i < len(self.hand) else 0 for i in range(9)]
-        if len(self.hand < 5):
-            valid_cards[8] = 1
+        valid_cards = [1 if i < len(matches) else 0 for i in range(10)]
+        if len(self.hand) < 5:
+            valid_cards[9] = 1
 
-        card_choice = np.argmax(self.net(state, Action.CARDS, valid_cards))
-        if card_choice == 8:
+        card_choice = int(torch.argmax(
+            self.net(state, Action.CARDS, valid_cards)).item())
+        if card_choice == 9:
             return None
 
         return matches[card_choice]
@@ -252,4 +259,4 @@ class RiskPlayer(Player):
             board, potential_territories)
         territory_activations, _ = self.net(
             state, Action.PLACE, valid_selections)
-        return self.get_territory_from_index(board, self.get_territory_from_index(np.argmax(territory_activations)))
+        return self.get_territory_from_index(board, int(torch.argmax(territory_activations).item()))
