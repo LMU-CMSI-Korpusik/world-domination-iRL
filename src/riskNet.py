@@ -57,7 +57,7 @@ class RiskNet(nn.Module):
         self.fortify_head_armies = nn.Sequential(
             nn.Linear(hidden_layer, 1), nn.Sigmoid())
         self.card_choice_head = nn.Linear(
-            hidden_layer, maximum_potential_cards + 1)
+            hidden_layer, 1)
 
     def forward(self, x, action_taken: Action, selectable_options: list[int] = None):
         """
@@ -108,10 +108,7 @@ class RiskNet(nn.Module):
                     selectable_options, dtype=torch.float, device=DEVICE)
                 return destination_mask * nn.functional.softmax(self.fortify_head_source(hidden_state_out), dim=0), self.fortify_head_armies(hidden_state_out)
             case Action.CARDS:
-                validate_is_type(selectable_options, list)
-                cards_mask = torch.tensor(
-                    selectable_options, dtype=torch.float, device=DEVICE)
-                return cards_mask * nn.functional.softmax(self.card_choice_head(hidden_state_out), dim=0)
+                return nn.functional.softmax(self.card_choice_head(hidden_state_out), dim=0)
             case _:
                 raise RuntimeError(
                     f'Invalid action supplied. Action given: {action_taken}')
