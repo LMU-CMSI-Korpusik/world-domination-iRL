@@ -111,7 +111,6 @@ class RiskPlayer(Player):
     """
     A player that implements RiskNet for decisionmaking.
     """
-    # if more than 4 cards in hand, mask the None option for tradein to 0
 
     @staticmethod
     def get_territories_mask(board: Board, valid_territories: list[Territory] | set[Territory]) -> list[int]:

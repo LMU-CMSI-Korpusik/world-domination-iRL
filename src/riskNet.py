@@ -20,7 +20,7 @@ class RiskNet(nn.Module):
         super().__init__()
         maximum_potential_cards = 9
         card_designs = len(Design)
-        in_features = 751
+        in_features = 751  # This should be calculated from the number of territories and players but I can't get the math right so it's just hard-coded for now -Kieran
 
         self.hidden_states = nn.Sequential(
             nn.Linear(in_features, hidden_layer),
