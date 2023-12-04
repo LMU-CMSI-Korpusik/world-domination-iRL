@@ -516,7 +516,7 @@ class Board:
         state       --  The state
         """
         territories_state = torch.zeros(
-            6 * len(self.territories), dtype=torch.double)
+            6 * len(self.territories), dtype=torch.float)
         for territory, territory_index in player.territories.items():
             territories_state[territory_index] = 1.0
 
@@ -530,14 +530,14 @@ class Board:
             other_player_index += 1
 
         armies_state = torch.zeros(
-            len(self.territories) + 1, dtype=torch.double)
+            len(self.territories) + 1, dtype=torch.float)
         for territory, territory_armies in self.armies.items():
             armies_state[self.territory_to_index[territory]
                          ] = float(territory_armies)
 
         armies_state[len(self.territories)] = float(armies_used)
 
-        action_state = torch.zeros(len(Action), dtype=torch.double)
+        action_state = torch.zeros(len(Action), dtype=torch.float)
         action_state[action_to_state_index[action]] = 1.0
 
         # each card has a territory, a design, and a wildcard status, and you can have at most 8 cards
@@ -546,7 +546,7 @@ class Board:
         cavalry_offset = card_encoding_length + 2
         artillery_offset = card_encoding_length + 3
         wildcard_offset = card_encoding_length + 4
-        cards_state = torch.zeros(card_encoding_length * 8)
+        cards_state = torch.zeros(card_encoding_length * 9, dtype=torch.float)
         for index, card in enumerate(player.hand):
             if card.wildcard:
                 cards_state[wildcard_offset +
@@ -566,9 +566,9 @@ class Board:
                                 card_encoding_length * index] = 1.0
 
         selection_state = torch.zeros(
-            len(self.territories), dtype=torch.double)
+            len(self.territories), dtype=torch.float)
         for territory in selected_territories:
-            selection_state[self.territory_to_index] = 1.0
+            selection_state[self.territory_to_index[territory]] = 1.0
         return torch.cat((territories_state, armies_state, cards_state, selection_state)).to(DEVICE)
 
 
@@ -720,11 +720,18 @@ class Risk:
                 armies_awarded = self.rules.get_armies_from_territories_occupied(
                     player.occupied_territories())
 
+                if not quiet:
+                    print(
+                        f'{player.name} gets {armies_awarded} armies from owned territories.')
+
                 player_occupied_territories = player.territories.keys()
 
                 for continent in self.board.continents:
                     if continent.territories.issubset(player_occupied_territories):
                         armies_awarded += continent.armies_awarded
+                        if not quiet:
+                            print(
+                                f'{player.name} gets {continent.armies_awarded} armies from controlling {continent.name}')
 
                 trading = True
                 while trading:
@@ -787,7 +794,8 @@ class Risk:
                         if not quiet:
                             print(
                                 f'{player.name} has captured {target.name}. {target.name} now has {armies_moved} armies. {base.name} now has {self.board.armies[base]} armies.')
-                        elif self.board.armies[target] < 0:
+
+                        if self.board.armies[target] < 0:
                             raise RuntimeError(
                                 f'Attack by {player.name} resulted in negative number of armies on {target.name}')
 
@@ -828,6 +836,10 @@ class Risk:
                     if not quiet:
                         print(
                             f'{player.name} has fortified {destination.name} with {armies} armies from {source.name}.')
+
+                    if self.board.armies[source] < 1:
+                        raise RuntimeError(
+                            f'{player.name} fortifying {destination.name} has left fewer than 1 army on {source.name}.')
                 elif not quiet and destination is None:
                     print(f'{player.name} chose not to fortify.')
 
