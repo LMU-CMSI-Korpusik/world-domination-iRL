@@ -799,6 +799,10 @@ class Risk:
                             raise RuntimeError(
                                 f'Attack by {player.name} resulted in negative number of armies on {target.name}')
 
+                        if self.board.armies[base] <= 0:
+                            raise RuntimeError(
+                                f'{player.name} capturing {target.name} has left fewer than 1 army on {base.name}')
+
                         if targeted_player.is_lose():
                             dead_players.append(targeted_player)
                             dead_player_cards = targeted_player.hand
