@@ -1,5 +1,5 @@
 """
-A demonstration Risk game using RiskPlayers
+A demonstration Risk game using RiskPlayers. Same caveat as testGame.py
 
 Author: Kieran Ahn
 Date: 12/3/2023
