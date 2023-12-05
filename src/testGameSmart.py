@@ -7,9 +7,10 @@ Date: 12/3/2023
 
 from riskLogic import Risk, Rules
 from boards import ClassicBoard
-from players import RiskPlayer
+from players import RiskPlayer, RandomPlayer
 from riskNet import RiskNet
 from riskGame import Action
+from constants import *
 
 net = RiskNet()
 
@@ -21,6 +22,7 @@ players.append(RiskPlayer('HAL', net))
 board = ClassicBoard(players)
 game = Risk(players, Rules(), board)
 game.play(quiet=False)
+
 print(f'\n\nstate of {players[0].name}:')
 print(board.get_state_for_player(players[0], Action.CLAIM))
 

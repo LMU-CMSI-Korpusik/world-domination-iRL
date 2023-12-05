@@ -8,10 +8,9 @@ from riskGame import *
 import random
 from dataclasses import dataclass, field
 import torch
+from constants import *
 
 random.seed(1234)
-
-DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 action_to_state_index = {action: index for index, action in enumerate(Action)}
 
@@ -351,9 +350,9 @@ class Player:
         valid_targets           --  all valid attack targets for the Player
         """
         return {neighbor for territory in occupied_territories
+                if board.armies[territory] > 1
                 for neighbor in board.territories[territory]
-                if neighbor not in occupied_territories
-                and board.armies[territory] > 1}
+                if neighbor not in occupied_territories}
 
     @staticmethod
     def get_valid_bases(board: Board, target: Territory, occupied_territories: set[Territory]) -> set:
@@ -516,7 +515,7 @@ class Board:
         state       --  The state
         """
         territories_state = torch.zeros(
-            6 * len(self.territories), dtype=torch.float)
+            6 * len(self.territories), dtype=torch.double)
         for territory, territory_index in player.territories.items():
             territories_state[territory_index] = 1.0
 
@@ -530,14 +529,14 @@ class Board:
             other_player_index += 1
 
         armies_state = torch.zeros(
-            len(self.territories) + 1, dtype=torch.float)
+            len(self.territories) + 1, dtype=torch.double)
         for territory, territory_armies in self.armies.items():
             armies_state[self.territory_to_index[territory]
                          ] = float(territory_armies)
 
         armies_state[len(self.territories)] = float(armies_used)
 
-        action_state = torch.zeros(len(Action), dtype=torch.float)
+        action_state = torch.zeros(len(Action), dtype=torch.double)
         action_state[action_to_state_index[action]] = 1.0
 
         # each card has a territory, a design, and a wildcard status, and you can have at most 8 cards
@@ -546,7 +545,7 @@ class Board:
         cavalry_offset = card_encoding_length + 2
         artillery_offset = card_encoding_length + 3
         wildcard_offset = card_encoding_length + 4
-        cards_state = torch.zeros(card_encoding_length * 9, dtype=torch.float)
+        cards_state = torch.zeros(card_encoding_length * 9, dtype=torch.double)
         for index, card in enumerate(player.hand):
             if card.wildcard:
                 cards_state[wildcard_offset +
@@ -566,7 +565,7 @@ class Board:
                                 card_encoding_length * index] = 1.0
 
         selection_state = torch.zeros(
-            len(self.territories), dtype=torch.float)
+            len(self.territories), dtype=torch.double)
         for territory in selected_territories:
             selection_state[self.territory_to_index[territory]] = 1.0
         return torch.cat((territories_state, armies_state, cards_state, selection_state)).to(DEVICE)
@@ -703,7 +702,7 @@ class Risk:
         rounds = 0
         dead_players = list()
         while gaming:
-            if rounds > 10000:
+            if rounds > MAX_ROUNDS:
                 raise RuntimeError('Game went on too long!')
 
             for player_index in player_order:
@@ -752,9 +751,22 @@ class Risk:
                     if target is None:
                         attacking = False
                         break
+                    if base not in player.territories:
+                        raise RuntimeError(
+                            f'{player.name} attempted to attack with {base.name} even though it belonged to {self.board.territory_owners[base].name}')
+                    if target in player.territories:
+                        raise RuntimeError(
+                            f'{player.name} attempted to attack own Territory {target.name}')
+                    if self.board.armies[base] < 2:
+                        raise RuntimeError(
+                            f'{player.name} attempted to attack {target.name} from {base.name} with fewer than 2 armies.\nValid targets: {Player.get_valid_attack_targets(self.board, list(set(player.territories.keys())))}\nValid bases: {Player.get_valid_bases(self.board, target, set(list(player.territories.keys())))}')
                     targeted_player = self.board.territory_owners[target]
                     armies_to_defend = targeted_player.defend(
                         self.board, target, armies_to_attack)
+
+                    if armies_to_defend > self.board.armies[target]:
+                        raise RuntimeError(
+                            f'{targeted_player.name} attempted to defend {target.name} with more armies than it had.')
 
                     if not quiet:
                         print(
@@ -834,6 +846,9 @@ class Risk:
 
                 destination, source, armies = player.fortify(self.board)
                 if destination is not None:
+                    if self.board.armies[source] < 2:
+                        raise RuntimeError(
+                            f'{player.name} attempted to use {source.name} as fortify source with fewer than 2 armies.\nValid sources: {Player.get_valid_bases(self.board, destination, set(list(player.territories.keys())))}')
                     self.board.add_armies(destination, armies)
                     self.board.add_armies(source, -armies)
 
