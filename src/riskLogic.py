@@ -8,10 +8,11 @@ from riskGame import *
 import random
 from dataclasses import dataclass, field
 import torch
+from constants import *
 
 random.seed(1234)
 
-DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
+action_to_state_index = {action: index for index, action in enumerate(Action)}
 
 
 class Board:
@@ -216,13 +217,14 @@ class Player:
         """
         raise NotImplementedError("Cannot call capture on base Player classs")
 
-    def defend(self, board: Board, target: Territory) -> int:
+    def defend(self, board: Board, target: Territory, attacking_armies: int) -> int:
         """
         Asks the player whether to defend a Territory with one or two armies
 
         :params:\n
-        board       --  the game Board\n
-        target      --  the Territory which is being attacked
+        board               --  the game Board\n
+        target              --  the Territory which is being attacked\n
+        attacking_armies    --  the number of armies the attacker is using
 
         :returns:\n
         armies      --  the number of armies with which to defend the Territory
@@ -348,6 +350,7 @@ class Player:
         valid_targets           --  all valid attack targets for the Player
         """
         return {neighbor for territory in occupied_territories
+                if board.armies[territory] > 1
                 for neighbor in board.territories[territory]
                 if neighbor not in occupied_territories}
 
@@ -363,7 +366,7 @@ class Player:
         occupied_territories    --  the Territories owned by the Player
         """
         return {neighbor for neighbor in board.territories[target]
-                if neighbor in occupied_territories and board.armies[neighbor] > 2}
+                if neighbor in occupied_territories and board.armies[neighbor] > 1}
 
     def occupied_territories(self):
         return len(self.territories)
@@ -496,19 +499,23 @@ class Board:
                 player.remove_territory(territory)
         self.matches_traded = 0
 
-    def get_state_for_player(self, player: Player):
-        # TODO: add encodings for territory attacked, fortification target, territory to defend
+    def get_state_for_player(self, player: Player, action: Action, armies_used: int = 0, *selected_territories: Territory):
         """
         Returns the state from the view of the supplied player
 
         :params:\n
-        player:     --  The player for which the state is being generated
+        player                  --  The Player for which the state is being
+        generated\n
+        action                  --  The action with which the Player is being 
+        prompted\n
+        armies_used             --  The number of armies used to attack\n
+        selected_territories    --  Any relevant territories, such as targets
 
         :returns\n
         state       --  The state
         """
         territories_state = torch.zeros(
-            6 * len(self.territories), dtype=torch.float)
+            6 * len(self.territories), dtype=torch.double)
         for territory, territory_index in player.territories.items():
             territories_state[territory_index] = 1.0
 
@@ -521,9 +528,16 @@ class Board:
                                   len(self.territories) * other_player_index] = 1.0
             other_player_index += 1
 
-        armies_state = torch.zeros(len(self.territories), dtype=torch.float)
-        for territory, armies in self.armies.items():
-            armies_state[self.territory_to_index[territory]] = float(armies)
+        armies_state = torch.zeros(
+            len(self.territories) + 1, dtype=torch.double)
+        for territory, territory_armies in self.armies.items():
+            armies_state[self.territory_to_index[territory]
+                         ] = float(territory_armies)
+
+        armies_state[len(self.territories)] = float(armies_used)
+
+        action_state = torch.zeros(len(Action), dtype=torch.double)
+        action_state[action_to_state_index[action]] = 1.0
 
         # each card has a territory, a design, and a wildcard status, and you can have at most 8 cards
         card_encoding_length = len(self.territories) + 4
@@ -531,7 +545,7 @@ class Board:
         cavalry_offset = card_encoding_length + 2
         artillery_offset = card_encoding_length + 3
         wildcard_offset = card_encoding_length + 4
-        cards_state = torch.zeros(card_encoding_length * 8)
+        cards_state = torch.zeros(card_encoding_length * 9, dtype=torch.double)
         for index, card in enumerate(player.hand):
             if card.wildcard:
                 cards_state[wildcard_offset +
@@ -549,7 +563,12 @@ class Board:
                 case Design.ARTILLERY:
                     cards_state[artillery_offset +
                                 card_encoding_length * index] = 1.0
-        return torch.cat((territories_state, armies_state, cards_state)).to(DEVICE)
+
+        selection_state = torch.zeros(
+            len(self.territories), dtype=torch.double)
+        for territory in selected_territories:
+            selection_state[self.territory_to_index[territory]] = 1.0
+        return torch.cat((territories_state, armies_state, cards_state, selection_state)).to(DEVICE)
 
 
 class Risk:
@@ -589,7 +608,7 @@ class Risk:
         matches = self.rules.get_matching_cards(player.hand)
         cards = player.use_cards(self.board, matches)
 
-        card_armies = 0
+        card_armies = -1
 
         if cards is not None:
             card_armies = self.rules.get_armies_from_card_match(
@@ -683,7 +702,7 @@ class Risk:
         rounds = 0
         dead_players = list()
         while gaming:
-            if rounds > 10000:
+            if rounds > MAX_ROUNDS:
                 raise RuntimeError('Game went on too long!')
 
             for player_index in player_order:
@@ -700,14 +719,29 @@ class Risk:
                 armies_awarded = self.rules.get_armies_from_territories_occupied(
                     player.occupied_territories())
 
+                if not quiet:
+                    print(
+                        f'{player.name} gets {armies_awarded} armies from owned territories.')
+
                 player_occupied_territories = player.territories.keys()
 
                 for continent in self.board.continents:
                     if continent.territories.issubset(player_occupied_territories):
                         armies_awarded += continent.armies_awarded
+                        if not quiet:
+                            print(
+                                f'{player.name} gets {continent.armies_awarded} armies from controlling {continent.name}')
 
-                if len(player.hand) > 2:
-                    armies_awarded += self.tradein(player, quiet)
+                trading = True
+                while trading:
+                    if len(player.hand) > 2:
+                        trade_armies = self.tradein(player, quiet)
+                        if trade_armies == -1:
+                            trading = False
+                            break
+                        armies_awarded += self.tradein(player, quiet)
+                    else:
+                        break
 
                 self.placement(player, armies_awarded, quiet)
 
@@ -717,9 +751,22 @@ class Risk:
                     if target is None:
                         attacking = False
                         break
+                    if base not in player.territories:
+                        raise RuntimeError(
+                            f'{player.name} attempted to attack with {base.name} even though it belonged to {self.board.territory_owners[base].name}')
+                    if target in player.territories:
+                        raise RuntimeError(
+                            f'{player.name} attempted to attack own Territory {target.name}')
+                    if self.board.armies[base] < 2:
+                        raise RuntimeError(
+                            f'{player.name} attempted to attack {target.name} from {base.name} with fewer than 2 armies.\nValid targets: {Player.get_valid_attack_targets(self.board, list(set(player.territories.keys())))}\nValid bases: {Player.get_valid_bases(self.board, target, set(list(player.territories.keys())))}')
                     targeted_player = self.board.territory_owners[target]
                     armies_to_defend = targeted_player.defend(
-                        self.board, target)
+                        self.board, target, armies_to_attack)
+
+                    if armies_to_defend > self.board.armies[target]:
+                        raise RuntimeError(
+                            f'{targeted_player.name} attempted to defend {target.name} with more armies than it had.')
 
                     if not quiet:
                         print(
@@ -759,9 +806,14 @@ class Risk:
                         if not quiet:
                             print(
                                 f'{player.name} has captured {target.name}. {target.name} now has {armies_moved} armies. {base.name} now has {self.board.armies[base]} armies.')
-                        elif self.board.armies[target] < 0:
+
+                        if self.board.armies[target] < 0:
                             raise RuntimeError(
                                 f'Attack by {player.name} resulted in negative number of armies on {target.name}')
+
+                        if self.board.armies[base] <= 0:
+                            raise RuntimeError(
+                                f'{player.name} capturing {target.name} has left fewer than 1 army on {base.name}')
 
                         if targeted_player.is_lose():
                             dead_players.append(targeted_player)
@@ -794,12 +846,19 @@ class Risk:
 
                 destination, source, armies = player.fortify(self.board)
                 if destination is not None:
+                    if self.board.armies[source] < 2:
+                        raise RuntimeError(
+                            f'{player.name} attempted to use {source.name} as fortify source with fewer than 2 armies.\nValid sources: {Player.get_valid_bases(self.board, destination, set(list(player.territories.keys())))}')
                     self.board.add_armies(destination, armies)
                     self.board.add_armies(source, -armies)
 
                     if not quiet:
                         print(
                             f'{player.name} has fortified {destination.name} with {armies} armies from {source.name}.')
+
+                    if self.board.armies[source] < 1:
+                        raise RuntimeError(
+                            f'{player.name} fortifying {destination.name} has left fewer than 1 army on {source.name}.')
                 elif not quiet and destination is None:
                     print(f'{player.name} chose not to fortify.')
 
