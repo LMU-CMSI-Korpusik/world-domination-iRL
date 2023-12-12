@@ -25,6 +25,7 @@ class Action(Enum):
     """
     CHOOSE_ATTACK_TARGET = "target"
     CHOOSE_ATTACK_BASE = "base"
+    CHOOSE_ATTACK_ARMIES = "attack"
     DEFEND = "defend"
     CLAIM = "claim"
     CAPTURE = "capture"
@@ -32,6 +33,7 @@ class Action(Enum):
     CARDS = "cards"
     CHOOSE_FORTIFY_SOURCE = "source"
     CHOOSE_FORTIFY_TARGET = "destination"
+    CHOOSE_FORTIFY_ARMIES = "fortify"
 
 
 @dataclass(frozen=True)

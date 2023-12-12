@@ -15,17 +15,19 @@ class RiskNet(nn.Module):
     A neural network that plays Risk.
     """
 
-    def __init__(self, hidden_layer: int = 512, territories: int = 42, players: int = 6):
+    def __init__(self, hidden_layer: int = 256, territories: int = 42, players: int = 6):
         super().__init__()
         maximum_potential_cards = 9
         card_designs = len(Design)
-        in_features = 751  # This should be calculated from the number of territories and players but I can't get the math right so it's just hard-coded for now -Kieran
+        n_actions = len(Action)
+        in_features = territories * (players + maximum_potential_cards + 3) + \
+            maximum_potential_cards * (card_designs + 1) + n_actions + 2
 
         self.hidden_states = nn.Sequential(
             nn.Linear(in_features, hidden_layer, dtype=torch.double),
-            nn.ReLU(),
+            nn.Tanh(),
             nn.Linear(hidden_layer, hidden_layer, dtype=torch.double),
-            nn.ReLU()
+            nn.Tanh()
         )
 
         # There are probably better ways to do this, but basically, for actions
@@ -53,15 +55,15 @@ class RiskNet(nn.Module):
             nn.Linear(hidden_layer, 1, dtype=torch.double), nn.Sigmoid())
         # since there are only 2 options, this is basically binary, so we can use the sigmoid
         self.defend_head = nn.Sequential(
-            nn.Linear(hidden_layer, 1, dtype=torch.double), nn.Sigmoid())
+            nn.Linear(hidden_layer, 2, dtype=torch.double), nn.Softmax(dim=0))
         self.fortify_head_source = nn.Linear(
             hidden_layer, territories, dtype=torch.double)
         self.fortify_head_destination = nn.Linear(
             hidden_layer, territories + 1, dtype=torch.double)
         self.fortify_head_armies = nn.Sequential(
             nn.Linear(hidden_layer, 1, dtype=torch.double), nn.Sigmoid())
-        self.card_choice_head = nn.Linear(
-            hidden_layer, 1, dtype=torch.double)
+        self.card_choice_head = nn.Sequential(nn.Linear(
+            hidden_layer, 1, dtype=torch.double), nn.Sigmoid())
 
     def forward(self, x, action_taken: Action, selectable_options: list[bool] = None):
         """
@@ -75,38 +77,34 @@ class RiskNet(nn.Module):
         invalid
         """
         hidden_state_out = self.hidden_states(x)
+        mask = None
+        if selectable_options:
+            mask = torch.tensor(selectable_options,
+                                dtype=torch.double, device=DEVICE)
+
         match(action_taken):
             case Action.CHOOSE_ATTACK_TARGET:
-                target_mask = torch.tensor(
-                    selectable_options, dtype=torch.double, device=DEVICE)
-                return target_mask * nn.functional.softmax(self.attack_head_target(hidden_state_out), dim=0, dtype=torch.double)
+                return mask * nn.functional.softmax(self.attack_head_target(hidden_state_out), dim=0, dtype=torch.double)
             case Action.CHOOSE_ATTACK_BASE:
-                base_mask = torch.tensor(
-                    selectable_options, dtype=torch.double, device=DEVICE
-                )
-                return base_mask * nn.functional.softmax(self.attack_head_base(hidden_state_out), dim=0, dtype=torch.double), self.attack_head_armies(hidden_state_out)
+                return mask * nn.functional.softmax(self.attack_head_base(hidden_state_out), dim=0, dtype=torch.double)
+            case Action.CHOOSE_ATTACK_ARMIES:
+                return mask * self.attack_head_armies(hidden_state_out)
             case Action.PLACE:
-                placement_mask = torch.tensor(
-                    selectable_options, dtype=torch.double, device=DEVICE)
-                return placement_mask * nn.functional.softmax(self.placement_head_territory(hidden_state_out), dim=0, dtype=torch.double), self.placement_head_armies(hidden_state_out)
+                return mask * nn.functional.softmax(self.placement_head_territory(hidden_state_out), dim=0, dtype=torch.double), self.placement_head_armies(hidden_state_out)
             case Action.CLAIM:
-                claim_mask = torch.tensor(
-                    selectable_options, dtype=torch.double, device=DEVICE)
-                return claim_mask * nn.functional.softmax(self.claim_head(hidden_state_out), dim=0, dtype=torch.double)
+                return mask * nn.functional.softmax(self.claim_head(hidden_state_out), dim=0, dtype=torch.double)
             case Action.CAPTURE:
                 return self.capture_head(hidden_state_out)
             case Action.DEFEND:
-                return self.defend_head(hidden_state_out)
+                return mask * self.defend_head(hidden_state_out)
             case Action.CHOOSE_FORTIFY_TARGET:
-                source_mask = torch.tensor(
-                    selectable_options, dtype=torch.double, device=DEVICE)
-                return source_mask * nn.functional.softmax(self.fortify_head_destination(hidden_state_out), dim=0, dtype=torch.double)
+                return mask * nn.functional.softmax(self.fortify_head_destination(hidden_state_out), dim=0, dtype=torch.double)
             case Action.CHOOSE_FORTIFY_SOURCE:
-                destination_mask = torch.tensor(
-                    selectable_options, dtype=torch.double, device=DEVICE)
-                return destination_mask * nn.functional.softmax(self.fortify_head_source(hidden_state_out), dim=0, dtype=torch.double), self.fortify_head_armies(hidden_state_out)
+                return mask * nn.functional.softmax(self.fortify_head_source(hidden_state_out), dim=0, dtype=torch.double)
+            case Action.CHOOSE_FORTIFY_ARMIES:
+                return self.fortify_head_armies(hidden_state_out)
             case Action.CARDS:
-                return nn.functional.softmax(self.card_choice_head(hidden_state_out), dim=0, dtype=torch.double)
+                return self.card_choice_head(hidden_state_out)
             case _:
                 raise RuntimeError(
                     f'Invalid action supplied. Action given: {action_taken}')

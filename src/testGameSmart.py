@@ -7,7 +7,7 @@ Date: 12/3/2023
 
 from riskLogic import Risk, Rules
 from boards import ClassicBoard
-from players import RiskPlayer, RandomPlayer
+from players import RiskPlayer
 from riskNet import RiskNet
 from riskGame import Action
 from constants import *
