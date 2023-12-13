@@ -129,5 +129,4 @@ for territory in classic_territories.keys():
         try:
             assert territory in classic_territories[neighbor]
         except:
-            print(f'{territory.name} not in neighbors of {
-                  neighbor.name}')
+            print(f'{territory.name} not in neighbors of {neighbor.name}')
