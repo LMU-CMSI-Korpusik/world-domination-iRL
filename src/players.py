@@ -163,6 +163,15 @@ class RiskPlayer(Player):
 
     @staticmethod
     def get_territories_mask(state: PlayerState, valid_territories: list[Territory] | set[Territory]) -> list[int]:
+        """
+        Returns a one-hot encoded list of all territories represented in 
+        valid_territories, where 1 indicates their inclusion in the collection
+        and 0 indicates their exclusion
+
+        :params:\n
+        state               --  the state of the game\n
+        valid_territories   --  the territories to be included in the mask
+        """
         mask = [0 for _ in range(len(state.territories))]
         for territory in valid_territories:
             mask[state.territory_to_index[territory]] = 1
@@ -170,11 +179,26 @@ class RiskPlayer(Player):
 
     @staticmethod
     def get_territory_from_index(state: PlayerState, territory_index: int) -> Territory:
+        """
+        Gets a Territory given its index in the sparse row
+
+        :params:\n
+        state           --  the state of the game
+        territory_index --  the Territory's index in the sparse row
+        """
         for territory, index in state.territory_to_index.items():
             if territory_index == index:
                 return territory
 
     def get_reward(self, last_state: PlayerState, last_action, current_state: PlayerState) -> int:
+        """
+        Gets the reward for a given (state, action) -> next state episode
+
+        :params:\n
+        last_state      --  the last observation\n
+        last_action     --  the last action the Player took\n
+        current_state   --  the current observation
+        """
         if current_state.is_winner:
             return 10
 
@@ -495,7 +519,15 @@ class RiskPlayer(Player):
         loss.backward()
         self.optimizer.step()
 
-    def train_step(self, action: Action, state):
+    def train_step(self, action: Action, state: PlayerState):
+        """
+        Performs a single training step for the model, which means a single
+        optimization step, then a single target update
+
+        :params:\n
+        action      --  the current turn phase\n
+        state       --  the state of the game
+        """
         if not self.last_state:
             return
 

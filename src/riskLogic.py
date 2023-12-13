@@ -741,7 +741,13 @@ class Risk:
 
     def play(self, quiet=True) -> Player:
         """
-        TODO: document this
+        Plays a game of Risk.
+
+        :params:\n
+        quiet       --  whether or not to print game updates to the console
+
+        :returns:\n
+        winner      --  the Player that won the game
         """
 
         # Initial army placement

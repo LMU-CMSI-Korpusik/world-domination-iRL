@@ -1,5 +1,9 @@
 """
-Evaluates the performance of the 
+Evaluates the performance of the neural network against a number of 
+RandomAgents and displays the results
+
+Author: Kieran Ahn
+Date: 12/12/2023
 """
 
 from riskLogic import Risk, Rules

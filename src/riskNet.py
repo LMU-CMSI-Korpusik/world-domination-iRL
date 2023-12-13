@@ -1,6 +1,9 @@
 """
 Python module containing the RiskNet class, which is a torch.nn.Module subclass
 that will play Risk.
+
+Author: Kieran Ahn
+Date: 10/2/2023
 """
 
 import torch
