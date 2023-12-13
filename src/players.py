@@ -2,8 +2,8 @@
 Different types of Players that can play in Risk. RiskPlayer implemented
 while referencing pac-cap final project for Dr. Forney's CMSI 4320
 
-Author: Kieran Ahn
-Date: 11/27/2023
+Author: Kieran Ahn, Jason Douglas
+Date: 11/27/2023, 12/07/2023
 """
 from validators import *
 from riskGame import Card, Territory, Action
@@ -113,6 +113,61 @@ class RandomPlayer(Player):
 
     def choose_extra_deployment(self, board: Board, potential_territories: list[Territory]) -> Territory:
         return rng.choice(potential_territories)
+
+class HumanPlayer(Player):
+    """
+    A Player that takes input from the user to make decisions.
+    """
+    def attack(self, board: Board) -> tuple[Territory, Territory, int]:
+        print('Attack')
+        print('======')
+        print('Territories:')
+        for territory in self.territories:
+            print(f'\t{territory}')
+        print('')
+
+        print('Targets:')
+        for territory, neighbors in board.territories.items():
+            if territory not in self.territories:
+                continue
+            for neighbor in neighbors:
+                if neighbor not in self.territories:
+                    print(f'\t{territory} -> {neighbor}')
+        print('')
+
+        target = input('Target: ')
+        base = input('Base: ')
+        armies = input('Armies: ')
+
+        return (target, base, armies)
+    def capture(self, board: Board, target: Territory, base: Territory, attacking_armies: int) -> int:
+        print('Capture')
+        print('=======')
+        print('Target:')
+        print(f'\t{target}')
+        print('Base:')
+        print(f'\t{base}')
+        print('Armies:')
+        print(f'\t{attacking_armies}')
+        print('')
+        return input('Armies: ')
+        
+    def defend(self, board: Board, target: Territory, attacking_armies: int) -> int:
+        print('Defend')
+        print('======')
+        print('Target:')
+        print(f'\t{target}')
+        print('Armies:')
+        print(f'\t{attacking_armies}')
+        print('')
+        print('1 or 2?')
+        return input('Armies: ')
+        
+    def fortify():
+        pass
+    def use_cards():
+        pass
+
 
 
 class RiskPlayer(Player):
