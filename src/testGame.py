@@ -1,10 +1,6 @@
 """
 A demonstration of the Risk game working using RandomPlayers
 
-                                        ########## IMPORTANT ##########
-BEFORE RUNNING THIS, DISABLE THE INCREMENT OF self.board.matches_traded IN Risk.tradein()!!!!!
-RandomPlayers are garbage and the game will go on forever if you don't.                                    
-
 Author: Kieran Ahn
 Date: 11/27/2023
 """
@@ -32,5 +28,3 @@ print(f'\n\nstate of {players[2].name}:')
 print(board.get_state_for_player(players[2], Action.CLAIM))
 
 board.reset()
-
-print(len(board.get_state_for_player(players[0], Action.CLAIM)))
