@@ -1,10 +1,6 @@
 """
 A demonstration of the Risk game working using RandomPlayers
 
-                                        ########## IMPORTANT ##########
-BEFORE RUNNING THIS, DISABLE THE INCREMENT OF self.board.matches_traded IN Risk.tradein()!!!!!
-RandomPlayers are garbage and the game will go on forever if you don't.                                    
-
 Author: Kieran Ahn
 Date: 11/27/2023
 """
@@ -21,16 +17,8 @@ players.append(RandomPlayer('sus'))
 
 board = ClassicBoard(players)
 game = Risk(players, Rules(), board)
-game.play(quiet=False)
-print(f'\n\nstate of {players[0].name}:')
-print(board.get_state_for_player(players[0], Action.CLAIM))
 
-print(f'\n\nstate of {players[1].name}:')
-print(board.get_state_for_player(players[1], Action.CLAIM))
-
-print(f'\n\nstate of {players[2].name}:')
-print(board.get_state_for_player(players[2], Action.CLAIM))
-
-board.reset()
-
-print(len(board.get_state_for_player(players[0], Action.CLAIM)))
+try:
+    game.play(quiet=False)
+except TimeoutError:
+    print(f'\nleader was: {game.get_leader().name}')

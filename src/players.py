@@ -295,6 +295,15 @@ class RiskPlayer(Player):
 
     @staticmethod
     def get_territories_mask(state: PlayerState, valid_territories: list[Territory] | set[Territory]) -> list[int]:
+        """
+        Returns a one-hot encoded list of all territories represented in 
+        valid_territories, where 1 indicates their inclusion in the collection
+        and 0 indicates their exclusion
+
+        :params:\n
+        state               --  the state of the game\n
+        valid_territories   --  the territories to be included in the mask
+        """
         mask = [0 for _ in range(len(state.territories))]
         for territory in valid_territories:
             mask[state.territory_to_index[territory]] = 1
@@ -302,11 +311,26 @@ class RiskPlayer(Player):
 
     @staticmethod
     def get_territory_from_index(state: PlayerState, territory_index: int) -> Territory:
+        """
+        Gets a Territory given its index in the sparse row
+
+        :params:\n
+        state           --  the state of the game
+        territory_index --  the Territory's index in the sparse row
+        """
         for territory, index in state.territory_to_index.items():
             if territory_index == index:
                 return territory
 
     def get_reward(self, last_state: PlayerState, last_action, current_state: PlayerState) -> int:
+        """
+        Gets the reward for a given (state, action) -> next state episode
+
+        :params:\n
+        last_state      --  the last observation\n
+        last_action     --  the last action the Player took\n
+        current_state   --  the current observation
+        """
         if current_state.is_winner:
             return 10
 
@@ -315,30 +339,15 @@ class RiskPlayer(Player):
         match(current_state.action):
             case Action.CHOOSE_ATTACK_TARGET:
                 if last_action != None:
-                    reward += 0.1
-
                     target = last_action
 
-                    # The player should be incentivized to take out weaker players first, if it can.
-                    strength_modifier = 0.01
-                    player_strengths = [(player, len(territories)) for player, territories in enumerate(
-                        last_state.other_territories)]
-                    player_strengths.sort(
-                        key=lambda player_and_territories: player_and_territories[1], reverse=True)
-                    player_indices = {order_index: strength_index for strength_index,
-                                      (order_index, _) in enumerate(player_strengths)}
-                    for player, territories in enumerate(last_state.other_territories):
-                        if target in territories:
-                            reward += strength_modifier * \
-                                (player_indices[player] + 1)
+                    reward += 0.01
 
-                    bases_powers = [last_state.armies[base] / last_state.armies[target]
+                    bases_powers = [last_state.armies[base] / (last_state.armies[base] + last_state.armies[target])
                                     for base in self.get_valid_bases(last_state, target, last_state.owned_territories)]
                     # Attacking an opponent with more or equal armies on a territory than all your surrounding territories is not good
-                    if all([power < 1 for power in bases_powers]):
+                    if all([power <= 0.5 for power in bases_powers]):
                         reward -= 0.02
-                    else:
-                        reward += 0.01 * float(np.mean(bases_powers))
                 else:
                     # If it's not attacking without a good reason, that's bad. Games should be as short as possible.
                     possible_targets = self.get_valid_attack_targets(
@@ -347,7 +356,7 @@ class RiskPlayer(Player):
                                       for base in self.get_valid_bases(
                                           last_state, target, last_state.owned_territories)
                                       if last_state.armies[base] > 2*last_state.armies[target] + 1})
-                    reward -= 0.02 * good_bases
+                    reward -= 0.005 + 0.01 * good_bases
 
             case Action.CHOOSE_ATTACK_BASE:
                 valid_sources = self.get_valid_bases(
@@ -356,27 +365,31 @@ class RiskPlayer(Player):
                 target = last_state.target_territory
 
                 # Attacking with the strongest army you have is always a good option
-                if all([last_state.armies[source] >= last_state.armies[other_base] for other_base in valid_sources if other_base is not source]):
+                other_bases_strengths = [last_state.armies[source] >= last_state.armies[other_base]
+                                         for other_base in valid_sources if other_base is not source]
+
+                if len(other_bases_strengths) == 0 or all([last_state.armies[source] >= last_state.armies[other_base] for other_base in valid_sources if other_base is not source]):
                     reward += 0.01
 
                 power_proportion = last_state.armies[source] / \
-                    last_state.armies[target]
-                if power_proportion > 1:
+                    (last_state.armies[target] + last_state.armies[source])
+                if power_proportion > 0.5:
                     reward += 0.01 * power_proportion
                 else:
-                    reward -= 0.01 * power_proportion
+                    reward -= 0.01 * (1 - power_proportion)
 
             case Action.CHOOSE_ATTACK_ARMIES:
                 # You always want to be attacking at the maximum number of armies
                 reward += 0.01 * last_action
 
-                if last_state.armies[last_state.source_territory] > last_action:
-                    reward -= 0.025
+                if last_state.armies[last_state.source_territory] > last_action + 1:
+                    reward -= 0.01
+
+                if last_action < 3 and last_state.armies[last_state.target_territory] >= 1:
+                    reward -= 0.015
 
             case Action.DEFEND:
                 reward += 0.01 * last_action
-                if current_state.won_battle:
-                    reward += 0.01
 
             case Action.CLAIM:
                 # Securing early borders is a good strategy
@@ -403,14 +416,17 @@ class RiskPlayer(Player):
                     danger_modifier = 0.01 * len(source_surrounding_enemies) * \
                         source_surrounding_enemies_strength_modifier
 
-                    border_territory_armies = [last_state.armies[territory] for territory in last_state.owned_territories if any(
-                        [neighbor not in last_state.owned_territories for neighbor in last_state.territories[territory]])]
+                    border_territories = {territory for territory in last_state.owned_territories if any(
+                        [neighbor not in last_state.owned_territories for neighbor in last_state.territories[territory]])}
+                    border_territory_armies = [
+                        last_state.armies[territory] for territory in border_territories]
 
                     turtling_modifier = (
-                        1 - last_state.armies[placement] / sum(border_territory_armies))
+                        last_state.armies[placement] / sum(border_territory_armies))
 
                     reward += danger_modifier * \
-                        last_action[1] * turtling_modifier
+                        last_action[1] - 0.01 * \
+                        len(border_territories) * turtling_modifier
 
             case Action.CARDS:
                 last_matches = Rules.get_matching_cards(last_state.hand)
@@ -447,21 +463,24 @@ class RiskPlayer(Player):
                                              for territory in last_state.territories[enemy_territory]
                                              if territory in last_state.owned_territories
                                              and any([last_state.armies[base] > 2*last_state.armies[territory] for base in self.get_valid_bases(last_state, territory, last_state.owned_territories)])])
-                    reward -= 0.01 * good_destinations
+                    reward -= 0.01 * good_destinations + 0.005
 
             case Action.CHOOSE_FORTIFY_SOURCE:
                 source = current_state.source_territory
                 valid_sources = self.get_valid_bases(
                     last_state, last_state.target_territory, last_state.owned_territories)
-                source_surrounding_enemies = [
-                    neighbor for neighbor in last_state.territories[source] if neighbor not in last_state.owned_territories]
+                source_surrounding_enemies = {
+                    neighbor for neighbor in last_state.territories[source] if neighbor not in last_state.owned_territories}
                 if len(source_surrounding_enemies) > 0:
                     # Taking armies away from a Territory that needs it is not a good idea, but if you're stronger, it's not that bad
-                    source_surrounding_enemies_strength_modifier = sum(
+                    source_surrounding_enemies_strengths = sum(
                         [last_state.armies[neighbor] for neighbor in source_surrounding_enemies])
-                    reward -= 0.01 * len(source_surrounding_enemies) * \
-                        (source_surrounding_enemies_strength_modifier /
+                    source_surrounding_enemies_strength_modifier = source_surrounding_enemies_strengths / \
+                        (source_surrounding_enemies_strengths +
                          last_state.armies[source])
+                    reward -= 0.1 * \
+                        len(source_surrounding_enemies) * \
+                        source_surrounding_enemies_strength_modifier
 
                 if all([last_state.armies[source] >= last_state.armies[other_source] for other_source in valid_sources if other_source is not source]):
                     # Fortifying with the Territory that can most spare it is good
@@ -470,12 +489,9 @@ class RiskPlayer(Player):
             case Action.CHOOSE_FORTIFY_ARMIES | Action.CAPTURE:
                 source = last_state.source_territory
                 target = last_state.target_territory
-                armies_moved_proportion = last_action / \
-                    (last_state.armies[source] - 1)
+                armies_moved_proportion = last_action
 
-                armies_remaining = last_state.armies[source] - last_action
-                armies_remaining_proportion = armies_remaining / \
-                    (last_state.armies[source] - 1)
+                armies_remaining_proportion = 1 - last_action
 
                 source_surrounding_enemies = [
                     neighbor for neighbor in last_state.territories[source] if neighbor not in last_state.owned_territories]
@@ -483,35 +499,46 @@ class RiskPlayer(Player):
                     neighbor for neighbor in last_state.territories[target] if neighbor not in last_state.owned_territories]
                 if len(target_surrounding_enemies) == 0:
                     # If there's no enemies aroumd the target, don't move more than you have to.
-                    reward -= 0.05 * armies_moved_proportion
+                    reward -= 0.5 * armies_moved_proportion
                 elif len(source_surrounding_enemies) > 0:
                     # Need to balance leaving behind enough armies to defend vs. attacking new territories
-                    source_surrounding_enemies_strength_modifier = sum(
-                        [last_state.armies[enemy_territory] - 1 for enemy_territory in source_surrounding_enemies]) / last_state.armies[source]
+                    source_surrounding_enemies_strength = sum(
+                        [last_state.armies[enemy_territory] - 1 for enemy_territory in source_surrounding_enemies])
 
-                    source_danger_modifier = 0.01 * \
+                    source_surrounding_enemies_strength_modifier = source_surrounding_enemies_strength / \
+                        (source_surrounding_enemies_strength +
+                         last_state.armies[source])
+
+                    source_danger_modifier = 0.1 * \
                         len(source_surrounding_enemies) * \
                         source_surrounding_enemies_strength_modifier
 
-                    target_surrounding_enemies_strength_modifier = sum(
-                        [last_state.armies[enemy_territory] - 1 for enemy_territory in target_surrounding_enemies]) / (last_state.armies[target] if last_state.action == Action.CHOOSE_FORTIFY_TARGET else last_state.armies_used)
+                    target_surrounding_enemies_strengths = sum(
+                        [last_state.armies[enemy_territory] - 1 for enemy_territory in target_surrounding_enemies])
 
-                    target_danger_modifier = 0.01 * \
+                    target_surrounding_enemies_strength_modifier = target_surrounding_enemies_strengths / (target_surrounding_enemies_strengths + (
+                        last_state.armies[target] if last_state.action == Action.CHOOSE_FORTIFY_TARGET else last_state.armies_used))
+
+                    target_danger_modifier = 0.1 * \
                         len(target_surrounding_enemies) * \
                         target_surrounding_enemies_strength_modifier
 
                     reward += target_danger_modifier * armies_moved_proportion
-                    reward -= target_danger_modifier * armies_remaining_proportion
                     reward -= source_danger_modifier * armies_moved_proportion
-                    reward += source_danger_modifier * armies_remaining_proportion
                 else:
                     # ...but if there's no need to defend, move everything.
-                    reward += 0.05 * armies_moved_proportion
+                    reward += 0.5 * armies_moved_proportion
 
         return reward
 
     def optimize(self, action: Action, state: PlayerState):
-        # This function is an exercise in sunk-cost fallacy.
+        """
+        Performs an SGD step on the Player's policy network
+
+        :params:\n
+        action      --  the turn state we are optimizing\n
+        stat        --  any state
+        """
         sample = random.sample(self.action_memory[action], BATCH_SIZE)
         batch = Transition(*zip(*sample))
 
@@ -624,7 +651,15 @@ class RiskPlayer(Player):
         loss.backward()
         self.optimizer.step()
 
-    def train_step(self, action: Action, state):
+    def train_step(self, action: Action, state: PlayerState):
+        """
+        Performs a single training step for the model, which means a single
+        optimization step, then a single target update
+
+        :params:\n
+        action      --  the current turn phase\n
+        state       --  the state of the game
+        """
         if not self.last_state:
             return
 

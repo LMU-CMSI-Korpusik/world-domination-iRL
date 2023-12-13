@@ -611,6 +611,9 @@ class Board:
         return deck
 
     def reset(self):
+        """
+        Returns the board to a starting position
+        """
         self.armies = {territory: 0 for territory in list(self.territories)}
         for player in self.players:
             player_cards = player.hand
@@ -736,9 +739,15 @@ class Risk:
                 print(
                     f'{player.name} placed {armies_placed} armies on {territory.name}.')
 
-    def play(self, quiet=True):
+    def play(self, quiet=True) -> Player:
         """
-        TODO: document this
+        Plays a game of Risk.
+
+        :params:\n
+        quiet       --  whether or not to print game updates to the console
+
+        :returns:\n
+        winner      --  the Player that won the game
         """
 
         # Initial army placement
@@ -980,23 +989,24 @@ class Risk:
                 state = self.board.get_state_for_player(
                     player, Action.CHOOSE_FORTIFY_TARGET)
 
-                destination, source, armies = player.fortify(state)
-                if destination is not None:
-                    if self.board.armies[source] < 2:
-                        raise RuntimeError(
-                            f'{player.name} attempted to use {source.name} as fortify source with fewer than 2 armies.\nValid sources: {Player.get_valid_bases(self.board, destination, player.territories)}')
-                    self.board.add_armies(destination, armies)
-                    self.board.add_armies(source, -armies)
+                if len(player.territories) > 1:
+                    destination, source, armies = player.fortify(state)
+                    if destination is not None:
+                        if self.board.armies[source] < 2:
+                            raise RuntimeError(
+                                f'{player.name} attempted to use {source.name} as fortify source with fewer than 2 armies.\nValid sources: {Player.get_valid_bases(self.board, destination, player.territories)}')
+                        self.board.add_armies(destination, armies)
+                        self.board.add_armies(source, -armies)
 
-                    if not quiet:
-                        print(
-                            f'{player.name} has fortified {destination.name} with {armies} armies from {source.name}.')
+                        if not quiet:
+                            print(
+                                f'{player.name} has fortified {destination.name} with {armies} armies from {source.name}.')
 
-                    if self.board.armies[source] < 1:
-                        raise RuntimeError(
-                            f'{player.name} fortifying {destination.name} has left fewer than 1 army on {source.name}.')
-                elif not quiet and destination is None:
-                    print(f'{player.name} chose not to fortify.')
+                        if self.board.armies[source] < 1:
+                            raise RuntimeError(
+                                f'{player.name} fortifying {destination.name} has left fewer than 1 army on {source.name}.')
+                    elif not quiet and destination is None:
+                        print(f'{player.name} chose not to fortify.')
 
             rounds += 1
 

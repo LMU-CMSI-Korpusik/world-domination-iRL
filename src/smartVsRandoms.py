@@ -35,9 +35,3 @@ except TimeoutError:
     print(smart_state.owned_territories)
     print('\nArmies on territories:')
     print(smart_state.armies)
-    print(players[0].network(smart_state.get_features(),
-          Action.CHOOSE_FORTIFY_ARMIES))
-    smart_state = board.get_state_for_player(
-        players[0], Action.CAPTURE)
-    print(players[0].network(smart_state.get_features(),
-          Action.CAPTURE))
