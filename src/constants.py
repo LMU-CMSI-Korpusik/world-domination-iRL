@@ -10,7 +10,7 @@ import torch
 import numpy as np
 import random
 
-TRAINING = True
+TRAINING = False
 DEVICE = 'cuda' if cuda.is_available() else 'cpu'
 
 seeded = False
@@ -27,16 +27,15 @@ if seeded:
 BATCH_SIZE = 32
 
 # Discount Factor
-# Risk is a game about long-term strategy, so the discount factor is going to be relatively low.
-GAMMA = 0.8
+GAMMA = 0.45
 
 # Soft update rate
 TAU = 0.005
 
 # Exploration rate
-EPS_START = 1.0
-EPS_END = 0.05
-EPS_DECAY = 0.005
+EPS_START = .99
+EPS_END = 0.03
+EPS_DECAY = 0.003
 
 # Episode capacity of replay buffer
 MEM_SIZE = 10000
@@ -45,7 +44,7 @@ MEM_SIZE = 10000
 WEIGHTS_PATH = '../dat/weights_RiskNet.pth'
 MEMORY_PATH = '../dat/memory_RiskNet.pkl'
 
-# no game of risk should go for more than twenty rounds
-MAX_ROUNDS = 20
+# no game of risk should go for more than ten rounds
+MAX_ROUNDS = 10
 
 TRAINING_GAMES = 100000
