@@ -26,20 +26,3 @@ try:
     game.play(quiet=False)
 except TimeoutError:
     print(f'\nleader was: {game.get_leader().name}')
-    smart_state = board.get_state_for_player(
-        players[0], Action.CHOOSE_FORTIFY_ARMIES)
-    print('\nSmart player territories:')
-    print(smart_state.owned_territories)
-    print('\nArmies on territories:')
-    print(smart_state.armies)
-
-print(f'\n\nstate of {players[0].name}:')
-print(board.get_state_for_player(players[0], Action.CLAIM))
-
-print(f'\n\nstate of {players[1].name}:')
-print(board.get_state_for_player(players[1], Action.CLAIM))
-
-print(f'\n\nstate of {players[2].name}:')
-print(board.get_state_for_player(players[2], Action.CLAIM))
-
-board.reset()
