@@ -48,3 +48,5 @@ MEMORY_PATH = '../dat/memory_RiskNet.pkl'
 MAX_ROUNDS = 10
 
 TRAINING_GAMES = 100000
+
+EVAL_GAMES = 100
