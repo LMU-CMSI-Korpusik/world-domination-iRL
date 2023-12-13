@@ -118,6 +118,29 @@ class HumanPlayer(Player):
     """
     A Player that takes input from the user to make decisions.
     """
+    def get_claim(self, board: Board, free_territories: set[Territory]) -> Territory:
+        print('Claim')
+        print('=====')
+        print('Territories:')
+        for territory in free_territories:
+            print(f'\t{territory}')
+        print('')
+
+        territory = input('Territory: ')
+        return territory
+
+    def place_armies(self, state: PlayerState, armies_to_place: int) -> tuple[Territory, int]:
+        print('Place Armies')
+        print('============')
+        print('Territories:')
+        for territory in self.territories:
+            print(f'\t{territory}')
+        print('')
+
+        territory = input('Territory: ')
+        armies = input('Armies: ')
+
+        return (territory, armies)
     def attack(self, board: Board) -> tuple[Territory, Territory, int]:
         print('Attack')
         print('======')
@@ -150,6 +173,7 @@ class HumanPlayer(Player):
         print('Armies:')
         print(f'\t{attacking_armies}')
         print('')
+        print('How many armies?')
         return input('Armies: ')
         
     def defend(self, board: Board, target: Territory, attacking_armies: int) -> int:
@@ -163,12 +187,64 @@ class HumanPlayer(Player):
         print('1 or 2?')
         return input('Armies: ')
         
-    def fortify():
-        pass
-    def use_cards():
-        pass
+    def fortify(self, state: PlayerState) -> tuple[Territory, Territory, int]:
+        print('Fortify')
+        print('=======')
+        print('Territories:')
+        for territory in self.territories:
+            print(f'\t{territory}')
+        print('')
 
+        print('Sources:')
+        for territory, neighbors in state.territories.items():
+            if territory not in self.territories:
+                continue
+            for neighbor in neighbors:
+                if neighbor in self.territories:
+                    print(f'\t{territory} -> {neighbor}')
+        print('')
 
+        source = input('Source: ')
+        destination = input('Destination: ')
+        armies = input('Armies: ')
+
+        return (destination, source, armies)
+        
+    def use_cards(self, board: Board, matches: list[Card]) -> tuple[Card, Card, Card] | None:
+        print('Use Cards')
+        print('=========')
+        print('Cards:')
+        for card in matches:
+            print(f'\t{card}')
+        print('')
+        if len(matches) >= 5:
+            print('You have 5 or more cards. You must use them.')
+            card1 = input('Card 1: ')
+            card2 = input('Card 2: ')
+            card3 = input('Card 3: ')
+        else:
+            print("Would you like to use any of these cards? (y/n)")
+            if input('Use cards? ').lower() == 'y':
+                card1 = input('Card 1: ')
+                card2 = input('Card 2: ')
+                card3 = input('Card 3: ')
+
+                return (card1, card2, card3)
+            else:
+                return None
+    def choose_extra_deployment(self, state: PlayerState, potential_territories: list[Territory]) -> Territory:
+        print('Choose Extra Deployment')
+        print('=======================')
+        print('Territories:')
+        for territory in potential_territories:
+            print(f'\t{territory}')
+        print('')
+
+        territory = input('Territory: ')
+        return territory
+
+    
+        
 
 class RiskPlayer(Player):
     """
