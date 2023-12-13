@@ -739,7 +739,7 @@ class Risk:
                 print(
                     f'{player.name} placed {armies_placed} armies on {territory.name}.')
 
-    def play(self, quiet=True):
+    def play(self, quiet=True) -> Player:
         """
         TODO: document this
         """
