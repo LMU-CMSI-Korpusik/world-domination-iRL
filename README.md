@@ -6,8 +6,6 @@ Hal 9000, Terminator, and the robots of the Matrix are some of the most popular 
 ## Project Goals
 The plan is to use a Neural Network to train an AI to play Risk. We will then use the AI to play against itself. We will also compare the AI's performance to that of a human player.
 
-## Setup
-
 ## How to Run
 >Before running any file, you must make sure to have PyTorch installed in your Python instance.
 

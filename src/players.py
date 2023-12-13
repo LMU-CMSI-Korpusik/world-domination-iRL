@@ -123,10 +123,10 @@ class HumanPlayer(Player):
         print('=====')
         print('Territories:')
         for territory in free_territories:
-            print(f'\t{territory}')
+            print(f'\t{territory.name}')
         print('')
 
-        territory = input('Territory: ')
+        territory = Territory(input('Territory: '))
         return territory
 
     def place_armies(self, state: PlayerState, armies_to_place: int) -> tuple[Territory, int]:
@@ -134,11 +134,14 @@ class HumanPlayer(Player):
         print('============')
         print('Territories:')
         for territory in self.territories:
-            print(f'\t{territory}')
+            print(f'\t{territory.name}')
+        print('')
+        print('Armies:')
+        print(f'\t{armies_to_place}')
         print('')
 
-        territory = input('Territory: ')
-        armies = input('Armies: ')
+        territory = Territory(input('Territory: '))
+        armies = int(input('Armies: '))
 
         return (territory, armies)
     def attack(self, board: Board) -> tuple[Territory, Territory, int]:
@@ -146,7 +149,7 @@ class HumanPlayer(Player):
         print('======')
         print('Territories:')
         for territory in self.territories:
-            print(f'\t{territory}')
+            print(f'\t{territory.name}')
         print('')
 
         print('Targets:')
@@ -155,12 +158,12 @@ class HumanPlayer(Player):
                 continue
             for neighbor in neighbors:
                 if neighbor not in self.territories:
-                    print(f'\t{territory} -> {neighbor}')
+                    print(f'\t{territory.name} -> {neighbor.name}')
         print('')
 
-        target = input('Target: ')
-        base = input('Base: ')
-        armies = input('Armies: ')
+        target = Territory(input('Target: '))
+        base = Territory(input('Base: '))
+        armies = int(input('Armies: '))
 
         return (target, base, armies)
     def capture(self, board: Board, target: Territory, base: Territory, attacking_armies: int) -> int:
@@ -174,7 +177,7 @@ class HumanPlayer(Player):
         print(f'\t{attacking_armies}')
         print('')
         print('How many armies?')
-        return input('Armies: ')
+        return int(input('Armies: '))
         
     def defend(self, board: Board, target: Territory, attacking_armies: int) -> int:
         print('Defend')
@@ -185,7 +188,7 @@ class HumanPlayer(Player):
         print(f'\t{attacking_armies}')
         print('')
         print('1 or 2?')
-        return input('Armies: ')
+        return int(input('Armies: '))
         
     def fortify(self, state: PlayerState) -> tuple[Territory, Territory, int]:
         print('Fortify')
@@ -204,9 +207,9 @@ class HumanPlayer(Player):
                     print(f'\t{territory} -> {neighbor}')
         print('')
 
-        source = input('Source: ')
-        destination = input('Destination: ')
-        armies = input('Armies: ')
+        source = Territory(input('Source: '))
+        destination = Territory(input('Destination: '))
+        armies = int(input('Armies: '))
 
         return (destination, source, armies)
         
@@ -219,15 +222,16 @@ class HumanPlayer(Player):
         print('')
         if len(matches) >= 5:
             print('You have 5 or more cards. You must use them.')
-            card1 = input('Card 1: ')
-            card2 = input('Card 2: ')
-            card3 = input('Card 3: ')
+            card1 = Card(input('Card 1: '))
+            card2 = Card(input('Card 2: '))
+            card3 = Card(input('Card 3: '))
+            return (card1, card2, card3)
         else:
             print("Would you like to use any of these cards? (y/n)")
             if input('Use cards? ').lower() == 'y':
-                card1 = input('Card 1: ')
-                card2 = input('Card 2: ')
-                card3 = input('Card 3: ')
+                card1 = Card(input('Card 1: '))
+                card2 = Card(input('Card 2: '))
+                card3 = Card(input('Card 3: '))
 
                 return (card1, card2, card3)
             else:
@@ -240,11 +244,8 @@ class HumanPlayer(Player):
             print(f'\t{territory}')
         print('')
 
-        territory = input('Territory: ')
-        return territory
-
-    
-        
+        territory = Territory(input('Territory: '))
+        return territory      
 
 class RiskPlayer(Player):
     """

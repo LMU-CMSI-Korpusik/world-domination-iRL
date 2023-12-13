@@ -7,7 +7,7 @@ Date: 12/12/2023
 
 from riskLogic import Risk, Rules
 from boards import ClassicBoard
-from players import RiskPlayer, RandomPlayer, SmartPlayer
+from players import RiskPlayer, RandomPlayer, HumanPlayer
 from riskNet import RiskNet
 from riskGame import Action
 from constants import *
@@ -16,7 +16,11 @@ net = RiskNet()
 
 players = list()
 players.append(RiskPlayer('GLaDOS', net))
-players.append(SmartPlayer('Kieran'))
+players.append(RandomPlayer('amogus'))
+players.append(RandomPlayer('sus'))
+players.append(RandomPlayer('morbius'))
+players.append(RandomPlayer('bingus'))
+players.append(HumanPlayer('Kieran'))
 
 
 board = ClassicBoard(players)
