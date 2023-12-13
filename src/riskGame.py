@@ -23,16 +23,17 @@ class Action(Enum):
     """
     Actions that a player can take.
     """
-    CHOOSE_ATTTACK_TARGET = "target"
+    CHOOSE_ATTACK_TARGET = "target"
     CHOOSE_ATTACK_BASE = "base"
+    CHOOSE_ATTACK_ARMIES = "attack"
     DEFEND = "defend"
     CLAIM = "claim"
     CAPTURE = "capture"
     PLACE = "place"
-    FORTIFY = "fortify"
     CARDS = "cards"
     CHOOSE_FORTIFY_SOURCE = "source"
     CHOOSE_FORTIFY_TARGET = "destination"
+    CHOOSE_FORTIFY_ARMIES = "fortify"
 
 
 @dataclass(frozen=True)
